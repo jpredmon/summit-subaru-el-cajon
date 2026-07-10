@@ -77,6 +77,18 @@ step, don't cut it silently.
   don't just mention it once in a task and let it disappear. This becomes
   my actual reference material afterward.
 
+### 7. Commit (last step, once the task is fully closed out)
+
+- Per the global CLAUDE.md's Version Control section: `git init` is step
+  zero for any project, and commits at each completed task are
+  pre-authorized — don't ask each time.
+- Commit once TDD + confidence score + both review stages + the LEARNING.md
+  note are all done. One commit per task, message states what the task
+  implemented and its confidence score.
+- If a confidence-ideation pass (see the confidence score step above) adds
+  tests or fixes after the task's initial commit, that's a separate
+  follow-up commit — don't fold it into the original one after the fact.
+
 ### Scope discipline
 
 - Only the tasks in the currently-approved implementation plan are in scope.
