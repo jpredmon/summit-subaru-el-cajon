@@ -65,6 +65,93 @@ void main() {
     expect(find.bySemanticsLabel('No photo available'), findsOneWidget);
     expect(find.bySemanticsLabel('2020 Honda Accord'), findsNothing);
   });
+
+  testWidgets(
+    'never invokes the image provider when photoUrl is null (structural proof, not just '
+    'absence of an Image)',
+    (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          VehiclePhoto(
+            photoUrl: null,
+            semanticLabel: 'Vehicle photo',
+            imageProvider: (url) => throw StateError('imageProvider should not be called'),
+          ),
+        ),
+      );
+
+      expect(find.bySemanticsLabel('No photo available'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'never invokes the image provider when photoUrl is empty (structural proof)',
+    (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          VehiclePhoto(
+            photoUrl: '',
+            semanticLabel: 'Vehicle photo',
+            imageProvider: (url) => throw StateError('imageProvider should not be called'),
+          ),
+        ),
+      );
+
+      expect(find.bySemanticsLabel('No photo available'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'recovers when photoUrl changes from a failed one to a working one '
+    '(the property Task 11\'s per-index independent retry depends on)',
+    (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          VehiclePhoto(
+            photoUrl: 'https://example.com/dead-link.jpg',
+            semanticLabel: 'Photo A',
+            imageProvider: _alwaysFailingImageProvider,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.bySemanticsLabel('No photo available'), findsOneWidget);
+
+      await tester.pumpWidget(
+        _wrap(
+          VehiclePhoto(
+            photoUrl: 'https://example.com/car.jpg',
+            semanticLabel: 'Photo B',
+            imageProvider: (url) => MemoryImage(Uint8List.fromList(_onePixelPng)),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.bySemanticsLabel('No photo available'), findsNothing);
+      expect(find.bySemanticsLabel('Photo B'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'treats a whitespace-only photoUrl as a real photo, matching the web app\'s '
+    'un-trimmed parity (no .trim() there either)',
+    (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          VehiclePhoto(
+            photoUrl: '   ',
+            semanticLabel: 'Vehicle photo',
+            imageProvider: (url) => MemoryImage(Uint8List.fromList(_onePixelPng)),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(Image), findsOneWidget);
+      expect(find.bySemanticsLabel('No photo available'), findsNothing);
+    },
+  );
 }
 
 /// A minimal valid 1x1 transparent PNG, so [Image]'s decoder succeeds.

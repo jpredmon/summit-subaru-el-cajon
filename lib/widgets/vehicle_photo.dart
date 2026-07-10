@@ -36,6 +36,12 @@ class VehiclePhoto extends StatelessWidget {
         borderRadius: BorderRadius.circular(kCardRadius),
         child: hasUrl
             ? Image(
+                // A distinct key per URL forces Flutter to discard the old
+                // _ImageState (and its cached error) instead of reusing it —
+                // without this, recovering from a failed photo to a working
+                // one can get stuck showing the stale placeholder. Same
+                // reason the web app's PhotoCarousel keys its <img> by index.
+                key: ValueKey(url),
                 image: imageProvider(url),
                 fit: BoxFit.cover,
                 semanticLabel: semanticLabel,

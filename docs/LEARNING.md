@@ -174,3 +174,13 @@ during this build. Appended to, never overwritten.
   accessible name/alt-text — matches this project's "test the semantics
   tree, not just visuals" approach used already for focus/ring accessibility
   goals in SPEC.md.
+- **`Image` needs a `Key` per source to recover from a load error.**
+  `_ImageState` memoizes its `ImageStreamListener` (and the error it
+  captured) for the widget's lifetime; changing `image` alone re-resolves
+  the stream but doesn't reliably clear stale error state on reuse. A
+  distinct `key: ValueKey(url)` forces Flutter to discard the old State and
+  build fresh — same reason the reference web app keys its carousel `<img>`
+  by index. Found via a real test failure (photo recovered from a failed
+  URL to a working one but stayed stuck on the placeholder), not by
+  inspection — a reminder that "should work by reasoning about the docs"
+  and "does work" are different claims for stateful widget internals.
