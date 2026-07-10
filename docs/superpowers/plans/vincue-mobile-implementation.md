@@ -46,7 +46,7 @@ Status legend: `[ ]` not started, `[~]` in progress, `[x]` done.
   first:** `ProviderContainer` overrides with a fake client — single-fetch
   semantics, error propagation.
 
-- [ ] **6. Paging logic** — full list + page number → 12-item slice. **Test
+- [x] **6. Paging logic** — full list + page number → 12-item slice. **Test
   first:** exact-multiple, partial-last-page, out-of-range, empty-list.
 
 - [ ] **7. Filtering logic** — make / body style / price two-select

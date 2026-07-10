@@ -115,3 +115,20 @@ during this build. Appended to, never overwritten.
 - **`ProviderContainer` + `addTearDown`.** Each test builds its own container
   and registers `addTearDown(container.dispose)` so provider state never leaks
   between tests.
+
+## 2026-07-10 — Task 6: Paging logic
+
+- **Generic top-level functions.** `PaginatedResult<T> paginate<T>(List<T>
+  items, int page, int pageSize)` — Dart generics on a bare function (no
+  class needed) read just like TypeScript's, one of the more directly
+  transferable pieces of syntax so far.
+- **`num.clamp` returns `num`, not the original type.** `int.clamp(int,
+  int)` has a same-type overload so `page.clamp(1, totalPages)` stays an
+  `int`, but mixing an `int` with `double.infinity` (as in the `totalPages`
+  calc) forces the result to `num`, hence the explicit `.toInt()` — a type a
+  TS dev wouldn't think to check for since `Math.min`/`Math.max` don't have
+  this split.
+- **`List.sublist(start, end)` vs JS `.slice`.** Same semantics (end
+  exclusive, clamped) but `sublist` throws `RangeError` if `end` is out of
+  bounds instead of silently clamping like JS — hence the explicit
+  `.clamp(0, items.length)` on `end` before calling it.
