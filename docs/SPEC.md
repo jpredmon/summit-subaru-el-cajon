@@ -268,6 +268,12 @@ class Vehicle {
   (or "Call for price"), body style.
 - Tap through to VDP.
 - **Paging:** client-side, over the full cached list. Page size: 12.
+  `totalPages = max(1, ceil(count / 12))` (an empty list still reports 1
+  page, not 0). Requested page number clamps into `[1, totalPages]` — a
+  page below 1 or above the last page silently resolves to the nearest
+  valid page rather than erroring or returning an empty slice (undocumented
+  in the original spec text, but real behavior in the web app's
+  `paginate.ts`, ported unchanged).
 - **Filtering:** make, normalized body style, and price range via **two
   selects** (min/max — see Data model above for the threshold list and
   pruning rule). Applied client-side, no additional API calls.
