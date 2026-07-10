@@ -132,3 +132,23 @@ during this build. Appended to, never overwritten.
   exclusive, clamped) but `sublist` throws `RangeError` if `end` is out of
   bounds instead of silently clamping like JS — hence the explicit
   `.clamp(0, items.length)` on `end` before calling it.
+
+## 2026-07-10 — Task 7: Filtering logic
+
+- **Set comprehensions for dedupe.** `{for (final v in vehicles) v.make}`
+  builds a `Set<String>` directly (no intermediate `.map().toSet()` chain) —
+  Dart's collection-for works inside set/map literals, not just lists.
+  `.toList()..sort()` afterward (the cascade `..` chains a void-returning
+  call onto the same list) gives sorted-unique in one expression.
+- **Enum declaration order as "canonical order."** `BodyCategory.values` is
+  a `List<BodyCategory>` in declaration order, so filtering it by
+  `.where(present.contains)` gives "present styles, canonical order" for
+  free — no separate ordering array needed (the web app hardcodes a
+  parallel `BODY_CATEGORY_ORDER` array to get the same effect from a plain
+  TS union type, which has no runtime ordering of its own).
+- **Testing logic the reference app never tested.** The min/max price
+  pruning exists only as inline JSX filter calls in the web app, with zero
+  unit tests. Porting untested logic 1:1 isn't optional — the plan's own
+  "Test first" line for this task named pruning boundaries explicitly, so
+  the test cases here were derived from the SPEC.md prose rather than an
+  existing test file to imitate.

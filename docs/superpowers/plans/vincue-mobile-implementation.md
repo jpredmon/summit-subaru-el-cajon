@@ -49,7 +49,7 @@ Status legend: `[ ]` not started, `[~]` in progress, `[x]` done.
 - [x] **6. Paging logic** — full list + page number → 12-item slice. **Test
   first:** exact-multiple, partial-last-page, out-of-range, empty-list.
 
-- [ ] **7. Filtering logic** — make / body style / price two-select
+- [x] **7. Filtering logic** — make / body style / price two-select
   (threshold list `[10000, 15000, 20000, 25000, 30000, 40000, 50000, 75000,
   100000]`, min/max mutual pruning) + price-null-exclusion rule. **Test
   first:** each dimension, pruning boundaries, null-exclusion combined with
