@@ -55,7 +55,7 @@ Status legend: `[ ]` not started, `[~]` in progress, `[x]` done.
   first:** each dimension, pruning boundaries, null-exclusion combined with
   an active price filter.
 
-- [ ] **8. Shared placeholder/broken-image widget** — used by SRP card
+- [x] **8. Shared placeholder/broken-image widget** — used by SRP card
   (Task 9) and VDP carousel (Task 11); placeholder on empty list and on
   `Image.network` `errorBuilder`. **Test first:** widget test, both cases.
 

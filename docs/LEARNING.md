@@ -152,3 +152,25 @@ during this build. Appended to, never overwritten.
   "Test first" line for this task named pruning boundaries explicitly, so
   the test cases here were derived from the SPEC.md prose rather than an
   existing test file to imitate.
+
+## 2026-07-10 — Task 8: Shared placeholder/broken-image widget
+
+- **`Image.network(url, ...)` vs `Image(image: NetworkImage(url), ...)`.**
+  The former is a convenience constructor for the latter — identical
+  runtime behavior. Taking the explicit form and making the `ImageProvider`
+  itself an injectable parameter is what makes `errorBuilder` testable at
+  all: without it, a widget test would need a real dead network URL (slow,
+  flaky, actually hits the network from a test).
+- **Forcing `errorBuilder` deterministically with `MemoryImage`.** Passing
+  `MemoryImage(Uint8List.fromList([1, 2, 3]))` (garbage, not real image
+  bytes) makes Flutter's decoder throw synchronously-ish — no `HttpOverrides`
+  or network mocking package needed. A real 1x1 PNG's byte sequence (hardcoded
+  in the test) proves the success path the opposite way.
+- **`errorBuilder`'s error surfaces async.** Flutter resolves the image
+  decode over a microtask/frame, so the test needs `await
+  tester.pumpAndSettle()` after `pumpWidget` before asserting on which
+  branch rendered — a single `pump()` isn't reliably enough.
+- **`find.bySemanticsLabel`.** The widget-test equivalent of querying by
+  accessible name/alt-text — matches this project's "test the semantics
+  tree, not just visuals" approach used already for focus/ring accessibility
+  goals in SPEC.md.
