@@ -11,6 +11,7 @@ import 'package:vincue_mobile/providers/inventory_provider.dart';
 import 'package:vincue_mobile/providers/srp_state_provider.dart';
 import 'package:vincue_mobile/providers/theme_mode_provider.dart';
 import 'package:vincue_mobile/screens/srp_screen.dart';
+import 'package:vincue_mobile/widgets/skeleton.dart';
 import 'package:vincue_mobile/widgets/vehicle_card.dart';
 
 import '../support/vehicle_factory.dart';
@@ -25,7 +26,7 @@ void main() {
     prefs = await SharedPreferences.getInstance();
   });
 
-  testWidgets('shows a loading indicator while inventory is loading', (tester) async {
+  testWidgets('shows a skeleton loading state (not a spinner) while inventory is loading', (tester) async {
     await tester.pumpWidget(
       _wrap(
         ProviderScope(
@@ -37,7 +38,27 @@ void main() {
       ),
     );
 
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(SkeletonBox), findsWidgets);
+    expect(find.byType(SkeletonPulse), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('skeleton loading grid matches the real grid cross-axis extent', (tester) async {
+    await tester.pumpWidget(
+      _wrap(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            inventoryProvider.overrideWith((ref) => Completer<Inventory>().future)],
+          child: const SrpScreen(),
+        ),
+      ),
+    );
+
+    final gridView = tester.widget<GridView>(find.byType(GridView));
+    final delegate = gridView.gridDelegate as SliverGridDelegateWithMaxCrossAxisExtent;
+    expect(delegate.maxCrossAxisExtent, 280);
   });
 
   testWidgets('shows an error message when inventory fails to load', (tester) async {

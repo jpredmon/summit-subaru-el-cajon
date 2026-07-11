@@ -12,10 +12,21 @@ import '../theme/app_theme.dart';
 import '../theme/breakpoints.dart';
 import '../utils/document_title.dart';
 import '../utils/format.dart';
+import '../widgets/skeleton.dart';
 import '../widgets/theme_toggle_button.dart';
 import '../widgets/vehicle_card.dart';
 
 const int _pageSize = 12;
+
+/// Shared by the real card grid and the skeleton loading grid so the loading
+/// placeholder lays out with the identical column count and cell size.
+const SliverGridDelegateWithMaxCrossAxisExtent _srpGridDelegate =
+    SliverGridDelegateWithMaxCrossAxisExtent(
+  maxCrossAxisExtent: 280,
+  mainAxisExtent: 340,
+  crossAxisSpacing: 16,
+  mainAxisSpacing: 16,
+);
 
 /// Search Results Page — grid of active inventory, wired to the cached
 /// [inventoryProvider] (Task 5) plus local filter/page state (Task 9;
@@ -34,7 +45,7 @@ class SrpScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(actions: const [ThemeToggleButton()]),
       body: inventoryAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const _SrpSkeleton(),
         error: (error, stackTrace) => const Center(
           child: Padding(
             padding: EdgeInsets.all(32),
@@ -91,12 +102,7 @@ class _SrpBodyState extends ConsumerState<_SrpBody> {
             child: paged.items.isEmpty
                 ? _EmptyResults(onClearFilters: notifier.clearFilters)
                 : GridView.builder(
-                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                      maxCrossAxisExtent: 280,
-                      mainAxisExtent: 340,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                    ),
+                    gridDelegate: _srpGridDelegate,
                     itemCount: paged.items.length,
                     itemBuilder: (context, index) {
                       final vehicle = paged.items[index];
@@ -129,6 +135,72 @@ class _SrpBodyState extends ConsumerState<_SrpBody> {
             ),
           )
         : content;
+  }
+}
+
+/// Loading placeholder for the SRP — mirrors the real body's shape (heading,
+/// filter bar, card grid) with pulsing skeleton blocks, reusing
+/// [_srpGridDelegate] so the placeholder grid matches the real grid's layout.
+class _SrpSkeleton extends StatelessWidget {
+  const _SrpSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return SkeletonPulse(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SkeletonBox(width: 140, height: 28),
+            const SizedBox(height: 16),
+            const SkeletonBox(height: 48),
+            const SizedBox(height: 16),
+            Expanded(
+              child: GridView.builder(
+                gridDelegate: _srpGridDelegate,
+                itemCount: 6,
+                itemBuilder: (context, index) => const _SkeletonCard(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One placeholder card matching [VehicleCard]'s shape: photo block above
+/// three stacked text lines.
+class _SkeletonCard extends StatelessWidget {
+  const _SkeletonCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      margin: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SkeletonBox(height: 200, borderRadius: 0),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                SkeletonBox(height: 16),
+                SizedBox(height: 8),
+                SkeletonBox(width: 120, height: 12),
+                SizedBox(height: 8),
+                SkeletonBox(width: 80, height: 16),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

@@ -107,13 +107,53 @@ Status legend: `[ ]` not started, `[~]` in progress, `[x]` done.
   results" button's filter-reset behavior -- fixed with
   `automaticallyImplyLeading: false`.
 
-- [ ] **14. Accessibility & reduced motion** — focus-highlight decoration
-  matching actual corner radius; `MediaQuery.disableAnimations` applied to
-  all Task 9–13 animations. **Test first:** animations skipped when
-  `disableAnimations` true. Keyboard/focus-traversal order (filters→cards→
-  pagination→VDP→carousel→back) verified as a **documented manual
-  checklist**, not an automated test — Flutter's widget-test harness doesn't
-  simulate real Tab-key traversal across a full app well.
+<!-- Tasks 14a/14b added 2026-07-11 to close a resilience-UX scope gap: SPEC
+     "Design polish → Resilience UX" (skeleton loading + scoped error boundary)
+     had no implementing task; the code shipped a CircularProgressIndicator +
+     inline per-screen error instead. Approved for full-parity build. Execution
+     order is 14a → 14b → 14c (14c's reduced-motion gates 14a's skeleton pulse).
+     Tasks 15–19 renumbering avoided by using letter suffixes. -->
+
+- [x] **14a. Skeleton loading states** — replace the `CircularProgressIndicator`
+  spinner (SRP `srp_screen.dart:37`, VDP `vdp_screen.dart:52`) with skeleton
+  placeholders matching the real layout shape (SPEC "Resilience UX"). A
+  reusable `SkeletonBox` (rounded grey rectangle, subtle opacity **pulse**) in
+  `lib/widgets/skeleton.dart`; SRP loading renders a grid of skeleton cards
+  reusing the existing `SliverGridDelegateWithMaxCrossAxisExtent` dims so the
+  skeleton grid matches the real grid; VDP loading renders a skeleton carousel
+  block + skeleton spec rows. The pulse animation is left **ungated here** —
+  Task 14c wires `disableAnimations` to it. **Test first:** loading state
+  renders `SkeletonBox`es (and no `CircularProgressIndicator`) for both SRP
+  and VDP; the SRP skeleton grid uses the same max-cross-axis-extent as the
+  real grid.
+
+- [ ] **14b. Scoped error boundary** — a dedicated boundary widget wrapping the
+  router's routed content so a render/build failure in routed content shows a
+  fallback **without taking down the header/theme-toggle** (SPEC lines 362–367;
+  Flutter equivalent of the web app's `ErrorBoundary` restricted to `<Routes>`).
+  Use a **dedicated boundary widget** around the router content, not a global
+  `ErrorWidget.builder` override (global is not scoped to routed content and
+  would also swallow chrome failures). NOTE — highest-uncertainty task in this
+  set: Flutter has no built-in try/catch-around-build; catching a descendant's
+  build exception requires a scoped `ErrorWidget.builder` swap or an equivalent
+  boundary technique, and this is the part to verify hardest. **Test first:** a
+  routed child that throws during build renders the fallback, and a sibling
+  chrome control (theme toggle) outside the boundary is still present/tappable.
+
+- [ ] **14c. Accessibility & reduced motion** — focus-highlight decoration
+  matching actual corner radius (`FocusableActionDetector` + themed decoration,
+  SPEC lines 349–351); `MediaQuery.disableAnimations` applied to every existing
+  animation — the `VehicleCard` `InkWell` ripple/hover **and** Task 14a's
+  skeleton pulse (the carousel swaps instantly and has no transition, so there
+  is nothing to gate there — a deviation from SPEC line 354's "carousel photo
+  transition" wording, which assumed an animated transition the build never
+  added; note it in the reduced-motion writeup). **Test first:** animations
+  skipped when `disableAnimations` true (skeleton pulse static; card ripple
+  suppressed); focus-highlight decoration present when a card is focused.
+  Keyboard/focus-traversal order (filters→cards→pagination→VDP→carousel→back)
+  verified as a **documented manual checklist**, not an automated test —
+  Flutter's widget-test harness doesn't simulate real Tab-key traversal across
+  a full app well.
 
 - [ ] **15. Native/web build-time base-URL wiring** — `main.dart`/`lib/
   config.dart` reads `API_BASE_URL`/`VINCUE_API_KEY` `--dart-define` values,

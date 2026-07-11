@@ -8,6 +8,7 @@ import 'package:vincue_mobile/models/inventory.dart';
 import 'package:vincue_mobile/providers/inventory_provider.dart';
 import 'package:vincue_mobile/providers/theme_mode_provider.dart';
 import 'package:vincue_mobile/screens/vdp_screen.dart';
+import 'package:vincue_mobile/widgets/skeleton.dart';
 
 import '../support/vehicle_factory.dart';
 
@@ -21,7 +22,7 @@ void main() {
     prefs = await SharedPreferences.getInstance();
   });
 
-  testWidgets('loading state: shows a loading indicator', (tester) async {
+  testWidgets('loading state: shows a skeleton (not a spinner)', (tester) async {
     await tester.pumpWidget(
       _wrap(
         ProviderScope(
@@ -33,7 +34,10 @@ void main() {
       ),
     );
 
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(SkeletonBox), findsWidgets);
+    expect(find.byType(SkeletonPulse), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('error state: shows the same message as SRP', (tester) async {

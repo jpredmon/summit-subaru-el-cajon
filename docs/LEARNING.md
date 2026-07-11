@@ -519,3 +519,28 @@ recording as a set, not just individually:
   `expanded` branch's `ConstrainedBox` only, leaving compact/medium
   byte-for-byte unchanged. A responsive tweak's *scope* has to match the
   breakpoint it claims to touch.
+
+## 2026-07-11 — Task 14a: Skeleton loading states
+
+- **`FadeTransition` + one repeating `AnimationController` = a cheap group
+  pulse.** Instead of animating every skeleton box, wrap the whole skeleton
+  subtree in one `FadeTransition` driven by a single controller
+  (`SingleTickerProviderStateMixin`, `..repeat(reverse: true)`). The opacity
+  change happens in a compositing layer, so the child widget tree isn't
+  rebuilt each tick — one ticker for the screen, not one per box. Always
+  `dispose()` the controller in `State.dispose()`.
+- **A forever-repeating animation makes `pumpAndSettle()` hang.**
+  `pumpAndSettle` pumps frames until no animation is scheduled; a
+  `..repeat()` animation is *always* scheduled, so it never returns (times
+  out after 10 min → test failure). Assert on loading states with `pump()`
+  (one frame) or `pump(duration)` instead. This is why the skeleton loading
+  tests use `pumpWidget` + `expect` with no settle.
+- **Share a `SliverGridDelegate...` via a top-level `const` so a placeholder
+  grid can't drift from the real grid.** Extracting `_srpGridDelegate` and
+  referencing it from both the real `GridView` and the skeleton `GridView`
+  makes "the skeleton matches the real grid's columns" a structural
+  guarantee, not a value that has to be kept in sync by hand.
+- **`colorScheme.surfaceContainerHighest` is the theme-aware neutral fill.**
+  Pulling the skeleton color from `ColorScheme` (same token the "no photo"
+  placeholder uses) means it adapts to light/dark automatically — no manual
+  grey that would break in dark mode.

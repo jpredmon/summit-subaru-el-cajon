@@ -10,6 +10,7 @@ import '../theme/breakpoints.dart';
 import '../utils/document_title.dart';
 import '../utils/format.dart';
 import '../widgets/photo_carousel.dart';
+import '../widgets/skeleton.dart';
 import '../widgets/theme_toggle_button.dart';
 
 const int _kFeatureBound = 10;
@@ -49,7 +50,7 @@ class VdpScreen extends ConsumerWidget {
       // with materially different outcomes.
       appBar: AppBar(automaticallyImplyLeading: false, actions: const [ThemeToggleButton()]),
       body: inventoryAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const _VdpSkeleton(),
         error: (error, stackTrace) => const Center(
           child: Padding(
             padding: EdgeInsets.all(32),
@@ -59,6 +60,43 @@ class VdpScreen extends ConsumerWidget {
         data: (inventory) => vehicle == null
             ? _NotFound(onBackToResults: onBackToResults)
             : _VdpBody(vehicle: vehicle, onBackToResults: onBackToResults),
+      ),
+    );
+  }
+}
+
+/// Loading placeholder for the VDP — a skeleton photo block above a stack of
+/// skeleton spec rows, matching the loaded layout's vertical shape.
+/// Intentionally single-column (maxWidth 800) even at expanded width rather
+/// than mirroring the two-pane loaded layout: loading is a brief transient and
+/// a single column collapses gracefully at any width.
+class _VdpSkeleton extends StatelessWidget {
+  const _VdpSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return SkeletonPulse(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 800),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SkeletonBox(width: 160, height: 20),
+              const SizedBox(height: 16),
+              const SkeletonBox(height: 280, borderRadius: 12),
+              const SizedBox(height: 24),
+              const SkeletonBox(width: 220, height: 28),
+              const SizedBox(height: 16),
+              for (var i = 0; i < 5; i++) ...[
+                const SkeletonBox(height: 16),
+                const SizedBox(height: 12),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
