@@ -8,7 +8,10 @@ import '../theme/app_theme.dart';
 /// the network.
 typedef VehiclePhotoProviderBuilder = ImageProvider Function(String url);
 
-ImageProvider _defaultImageProvider(String url) => NetworkImage(url);
+/// Default [VehiclePhotoProviderBuilder] — plain [NetworkImage]. Public so
+/// other widgets embedding [VehiclePhoto] (e.g. [PhotoCarousel], Task 11) can
+/// reference the same default rather than duplicating it.
+ImageProvider defaultVehiclePhotoProvider(String url) => NetworkImage(url);
 
 /// Shared photo widget for the SRP card (Task 9) and VDP carousel (Task 11).
 /// Shows a placeholder when [photoUrl] is null/empty *or* when the photo
@@ -18,7 +21,7 @@ class VehiclePhoto extends StatelessWidget {
     super.key,
     required this.photoUrl,
     required this.semanticLabel,
-    this.imageProvider = _defaultImageProvider,
+    this.imageProvider = defaultVehiclePhotoProvider,
   });
 
   final String? photoUrl;

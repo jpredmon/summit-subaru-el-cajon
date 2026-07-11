@@ -79,10 +79,12 @@ Status legend: `[ ]` not started, `[~]` in progress, `[x]` done.
   so it only works same-origin for that app, not from this app's own dev
   server — real notes in SPEC.md/LEARNING.md for Task 15.
 
-- [ ] **11. Photo carousel widget** — current-index state, Previous/Next
+- [x] **11. Photo carousel widget** — current-index state, Previous/Next
   clamped (not wrapped), "X of Y" counter, per-index failure tracking
   (reuses Task 8). **Test first:** boundary clamp, counter text, per-index
-  independent retry.
+  independent retry. Deviation from the web reference: `IconButton`s
+  (chevron icons + tooltip) instead of text-label buttons — the text-label
+  version overflowed at realistic widths; see LEARNING.md.
 
 - [ ] **12. VDP screen** — header, spec table, features (bounded to 10,
   "Show all (N)"/"Show less", no section when empty), four states (loading/

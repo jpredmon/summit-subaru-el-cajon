@@ -280,3 +280,33 @@ during this build. Appended to, never overwritten.
   header on the response. A "it works for the reference app" URL doesn't
   transfer to a different consumer without its own CORS-safe deployment —
   this is exactly why Task 15 is real build/infra work, not just an env var.
+
+## 2026-07-10 — Task 11: Photo carousel widget
+
+- **Reusing Task 8's `VehiclePhoto` eliminated an entire category of new
+  bugs.** The plan called out "per-photo-index failure tracking" as if it
+  needed new state in the carousel, but `VehiclePhoto` already keys its
+  internal `Image` per URL (Task 8's fix), so swapping `photoUrl` as the
+  carousel's index changes is *itself* sufficient for a failed photo to
+  retry independently when revisited — no extra `Map<int, bool>` or similar
+  needed. Confirmed with two tests: navigating to a *different* index after
+  a failure, and — added specifically to close a gap noticed while writing
+  the confidence score — revisiting the *same* failed index later.
+- **`TextButton` with real text labels can overflow a realistic phone
+  width.** Mirroring the web app's "Previous photo"/"Next photo" text
+  buttons overflowed by 104px even at 400 logical pixels wide (a plausible
+  phone width, not just a narrow test fixture) — `TextButton`'s minimum tap
+  target plus padding adds up fast for two multi-word labels plus a counter
+  in one row. Switched to `IconButton` (chevron icons) with the same text
+  as a `tooltip` (which still contributes an accessible name via semantics,
+  just not visible chrome) — more compact, arguably more idiomatic for a
+  carousel control, and exactly the kind of substitution SPEC.md's "design
+  polish" section already sanctions (target *behavior*, not literal
+  port). Found by testing at a real width, not by inspection.
+- **`find.byTooltip(...)` finds the `Tooltip` widget, not the button inside
+  it** — trying to read `.onPressed` off it directly threw a cast error.
+  Wrap the lookup: `find.descendant(of: find.byTooltip(...), matching:
+  find.byType(IconButton))`. Simpler alternative used here instead:
+  `find.widgetWithIcon(IconButton, Icons.chevron_right)` — finds the button
+  directly when the icon itself is unique enough to identify it, sidestepping
+  the tooltip-vs-button distinction entirely.
