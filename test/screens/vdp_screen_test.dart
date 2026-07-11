@@ -308,6 +308,52 @@ void main() {
     );
   });
 
+  group('two-pane layout', () {
+    testWidgets('expanded width: renders the two-pane Row layout', (tester) async {
+      tester.view.physicalSize = const Size(1000, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final inventory = Inventory(vehicles: [vehicle(id: 1)], dealerName: 'Test Dealer');
+      await tester.pumpWidget(
+        _wrap(
+          ProviderScope(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              inventoryProvider.overrideWith((ref) => Future.value(inventory)),
+            ],
+            child: const VdpScreen(vehicleId: 1),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('vdp-two-pane-row')), findsOneWidget);
+    });
+
+    testWidgets('sub-expanded (medium) width: does not render the two-pane Row layout', (tester) async {
+      tester.view.physicalSize = const Size(700, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final inventory = Inventory(vehicles: [vehicle(id: 1)], dealerName: 'Test Dealer');
+      await tester.pumpWidget(
+        _wrap(
+          ProviderScope(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              inventoryProvider.overrideWith((ref) => Future.value(inventory)),
+            ],
+            child: const VdpScreen(vehicleId: 1),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('vdp-two-pane-row')), findsNothing);
+    });
+  });
+
   group('description', () {
     testWidgets('shown when non-empty', (tester) async {
       final inventory = Inventory(

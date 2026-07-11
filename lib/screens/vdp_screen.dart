@@ -6,6 +6,7 @@ import '../models/vdp_page_title.dart';
 import '../models/vehicle.dart';
 import '../providers/inventory_provider.dart';
 import '../theme/app_theme.dart';
+import '../theme/breakpoints.dart';
 import '../utils/document_title.dart';
 import '../utils/format.dart';
 import '../widgets/photo_carousel.dart';
@@ -98,68 +99,127 @@ class _VdpBodyState extends State<_VdpBody> {
   @override
   Widget build(BuildContext context) {
     final vehicle = widget.vehicle;
-    final theme = Theme.of(context);
+    final windowSizeClass = windowSizeClassOf(MediaQuery.sizeOf(context).width);
+    final backButton = TextButton(
+      onPressed: widget.onBackToResults,
+      child: const Text('Back to search results'),
+    );
+    final details = _VdpDetails(
+      vehicle: vehicle,
+      featuresExpanded: _featuresExpanded,
+      onToggleFeatures: () => setState(() => _featuresExpanded = !_featuresExpanded),
+    );
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: ConstrainedBox(
+    final Widget content;
+    if (windowSizeClass == WindowSizeClass.expanded) {
+      content = ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1200),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            backButton,
+            const SizedBox(height: 8),
+            Row(
+              key: const Key('vdp-two-pane-row'),
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 440,
+                  child: PhotoCarousel(key: ValueKey(vehicle.id), photos: vehicle.photos),
+                ),
+                const SizedBox(width: 24),
+                Expanded(child: details),
+              ],
+            ),
+          ],
+        ),
+      );
+    } else {
+      content = ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 800),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextButton(onPressed: widget.onBackToResults, child: const Text('Back to search results')),
+            backButton,
             const SizedBox(height: 8),
             PhotoCarousel(key: ValueKey(vehicle.id), photos: vehicle.photos),
             const SizedBox(height: 16),
-            Text(
-              '${vehicle.year} ${vehicle.make} ${vehicle.model} ${vehicle.trim}',
-              style: theme.textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 4),
-            vehicle.price != null
-                ? Text(
-                    formatPrice(vehicle.price!),
-                    style: tabularNumsStyle(theme.textTheme.titleLarge!).copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.primary,
-                    ),
-                  )
-                : Text(
-                    'Call for price',
-                    style: theme.textTheme.titleLarge!.copyWith(
-                      fontStyle: FontStyle.italic,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-            const SizedBox(height: 4),
-            Text(
-              '${formatMileage(vehicle.mileage)} · Stock #${vehicle.stock}',
-              style: tabularNumsStyle(theme.textTheme.bodyMedium!).copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const Divider(height: 32),
-            _SpecTable(vehicle: vehicle),
-            if (vehicle.features.isNotEmpty) ...[
-              const Divider(height: 32),
-              Text('Features', style: theme.textTheme.titleMedium),
-              const SizedBox(height: 12),
-              _FeatureList(
-                features: vehicle.features,
-                expanded: _featuresExpanded,
-                onToggle: () => setState(() => _featuresExpanded = !_featuresExpanded),
-              ),
-            ],
-            if (vehicle.description.isNotEmpty) ...[
-              const Divider(height: 32),
-              Text('Description', style: theme.textTheme.titleMedium),
-              const SizedBox(height: 12),
-              Text(vehicle.description, style: theme.textTheme.bodyMedium),
-            ],
+            details,
           ],
         ),
-      ),
+      );
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: content,
+    );
+  }
+}
+
+class _VdpDetails extends StatelessWidget {
+  const _VdpDetails({required this.vehicle, required this.featuresExpanded, required this.onToggleFeatures});
+
+  final Vehicle vehicle;
+  final bool featuresExpanded;
+  final VoidCallback onToggleFeatures;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '${vehicle.year} ${vehicle.make} ${vehicle.model} ${vehicle.trim}',
+          style: theme.textTheme.headlineSmall,
+        ),
+        const SizedBox(height: 4),
+        vehicle.price != null
+            ? Text(
+                formatPrice(vehicle.price!),
+                style: tabularNumsStyle(theme.textTheme.titleLarge!).copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.primary,
+                ),
+              )
+            : Text(
+                'Call for price',
+                style: theme.textTheme.titleLarge!.copyWith(
+                  fontStyle: FontStyle.italic,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+        const SizedBox(height: 4),
+        Text(
+          '${formatMileage(vehicle.mileage)} · Stock #${vehicle.stock}',
+          style: tabularNumsStyle(theme.textTheme.bodyMedium!).copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const Divider(height: 32),
+        _SpecTable(vehicle: vehicle),
+        if (vehicle.features.isNotEmpty) ...[
+          const Divider(height: 32),
+          Text('Features', style: theme.textTheme.titleMedium),
+          const SizedBox(height: 12),
+          _FeatureList(
+            features: vehicle.features,
+            expanded: featuresExpanded,
+            onToggle: onToggleFeatures,
+          ),
+        ],
+        if (vehicle.description.isNotEmpty) ...[
+          const Divider(height: 32),
+          Text('Description', style: theme.textTheme.titleMedium),
+          const SizedBox(height: 12),
+          Text(vehicle.description, style: theme.textTheme.bodyMedium),
+        ],
+      ],
     );
   }
 }

@@ -472,3 +472,30 @@ recording as a set, not just individually:
   behavior (resets filters), so the two controls silently disagreed.
   `AppBar(automaticallyImplyLeading: false, ...)` opts out of the automatic
   one, leaving the explicit button as the only way back.
+
+## 2026-07-11 — Task 18: VDP two-pane layout
+
+- **`tester.view.physicalSize`/`.devicePixelRatio` simulate a specific
+  viewport in a widget test.** `MediaQuery.sizeOf(context).width` (what
+  `windowSizeClassOf` from Task 17 branches on) reads the *logical* size,
+  which is `physicalSize / devicePixelRatio`. Setting both explicitly (e.g.
+  `Size(1000, 800)` at ratio `1.0` → logical width 1000) is how a test
+  forces a specific breakpoint deterministically, instead of depending on
+  whatever the default test surface happens to be. `addTearDown(tester.view
+  .reset)` restores the real test binding's default afterward so later tests
+  in the same file aren't affected.
+- **Extract-a-widget refactor to share a subtree across two layout branches,
+  without duplicating the state that feeds it.** `_VdpDetails` pulls the
+  "title through description" block (previously inline in `_VdpBodyState
+  .build()`) into its own `StatelessWidget`, taking `featuresExpanded`/
+  `onToggleFeatures` as constructor params. The `_featuresExpanded` bool
+  itself stays owned by `_VdpBodyState` — only the *rendering* of it moved,
+  not the state — so both the stacked (compact/medium) and side-by-side
+  (expanded) arrangements build the identical widget instance from the same
+  source of truth instead of two copies that could drift.
+- **A `Key` placed purely for test identification is a normal, idiomatic
+  Flutter pattern, not a smell.** `Row(key: const Key('vdp-two-pane-row'),
+  ...)` exists solely so a widget test can assert "the two-pane layout is
+  present" via `find.byKey(...)` without a fragile structural count (e.g.
+  counting every `Row`/`Column` in the tree, which would also match
+  unrelated internal widgets like `_SpecTable`'s `Wrap`).
