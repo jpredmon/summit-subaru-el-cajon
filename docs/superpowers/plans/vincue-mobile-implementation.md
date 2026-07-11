@@ -125,7 +125,7 @@ Status legend: `[ ]` not started, `[~]` in progress, `[x]` done.
   dev/build-architecture decisions (proxy vs. direct-VINCUE, `-d web-server`
   vs `-d chrome`). No test — documentation only.
 
-- [ ] **17. Breakpoint utility** — `lib/theme/breakpoints.dart`:
+- [x] **17. Breakpoint utility** — `lib/theme/breakpoints.dart`:
   `WindowSizeClass` enum (`compact`/`medium`/`expanded`) + `kMediumBreakpoint`
   (600) / `kExpandedBreakpoint` (840) constants + `windowSizeClassOf(double
   width)`, per the approved design
@@ -133,7 +133,7 @@ Status legend: `[ ]` not started, `[~]` in progress, `[x]` done.
   function, no widget dependency. **Test first:** boundary values — 599 →
   compact, 600 → medium, 839 → medium, 840 → expanded.
 
-- [ ] **18. VDP two-pane layout** — at `expanded` width, `VdpScreen` renders
+- [x] **18. VDP two-pane layout** — at `expanded` width, `VdpScreen` renders
   `PhotoCarousel` in a `440px`-fixed left column and spec
   table/features/description in a scrolling right column filling the
   remainder, both inside a `Row` capped at `maxWidth: 1200`. Below
@@ -144,7 +144,7 @@ Status legend: `[ ]` not started, `[~]` in progress, `[x]` done.
   and an expanded width and asserts which structural layout (stacked
   `Column` vs. side-by-side `Row`) is present at each.
 
-- [ ] **19. SRP width cap at wide viewports** — at `expanded` width, wrap
+- [x] **19. SRP width cap at wide viewports** — at `expanded` width, wrap
   `SrpScreen`'s existing grid/filter-bar content in a `maxWidth: 1200`
   `ConstrainedBox` (same cap Task 18 uses, for visual consistency between
   screens) so it doesn't stretch edge-to-edge on a large desktop window; no

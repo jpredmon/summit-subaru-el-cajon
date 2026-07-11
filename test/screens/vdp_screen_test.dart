@@ -329,6 +329,14 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('vdp-two-pane-row')), findsOneWidget);
+      // Two-pane content is centered (web-parity: mx-auto), not left-aligned.
+      expect(
+        find.ancestor(
+          of: find.byKey(const Key('vdp-two-pane-row')),
+          matching: find.byType(Center),
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('sub-expanded (medium) width: does not render the two-pane Row layout', (tester) async {

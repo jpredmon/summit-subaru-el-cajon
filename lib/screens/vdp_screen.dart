@@ -112,27 +112,29 @@ class _VdpBodyState extends State<_VdpBody> {
 
     final Widget content;
     if (windowSizeClass == WindowSizeClass.expanded) {
-      content = ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1200),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            backButton,
-            const SizedBox(height: 8),
-            Row(
-              key: const Key('vdp-two-pane-row'),
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: 440,
-                  child: PhotoCarousel(key: ValueKey(vehicle.id), photos: vehicle.photos),
-                ),
-                const SizedBox(width: 24),
-                Expanded(child: details),
-              ],
-            ),
-          ],
+      content = Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1200),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              backButton,
+              const SizedBox(height: 8),
+              Row(
+                key: const Key('vdp-two-pane-row'),
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 440,
+                    child: PhotoCarousel(key: ValueKey(vehicle.id), photos: vehicle.photos),
+                  ),
+                  const SizedBox(width: 24),
+                  Expanded(child: details),
+                ],
+              ),
+            ],
+          ),
         ),
       );
     } else {

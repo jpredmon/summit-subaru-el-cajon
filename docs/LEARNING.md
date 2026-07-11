@@ -499,3 +499,23 @@ recording as a set, not just individually:
   present" via `find.byKey(...)` without a fragile structural count (e.g.
   counting every `Row`/`Column` in the tree, which would also match
   unrelated internal widgets like `_SpecTable`'s `Wrap`).
+
+## 2026-07-11 — Tasks 17–19 whole-branch review closeout
+
+- **`Center` inside a vertical scroll view is safe — it shrink-wraps.**
+  Wrapping the width-capped content in `Center` to horizontally center it
+  (matching the web app's `mx-auto`) does *not* throw the usual "unbounded
+  height" error, even though a `SingleChildScrollView` gives its child
+  unbounded vertical space. `RenderPositionedBox` (behind `Center`/`Align`)
+  auto-shrink-wraps whichever axis is unbounded, so it just sizes to the
+  child vertically and centers horizontally within the bounded viewport
+  width. (Contrast: `Column`/`Expanded` in unbounded height *do* throw — the
+  shrink-wrap rule is specific to `Align`/`Center`.)
+- **"No behavior change below `expanded`" applies to *where* you wrap.**
+  First cut centered the whole VDP `content` (both branches) by wrapping the
+  outer scroll child — but that would recenter the sub-expanded `maxWidth:
+  800` layout at 801–839px viewports, a change below the `expanded`
+  breakpoint the responsive spec forbids. Fix: scope the `Center` to the
+  `expanded` branch's `ConstrainedBox` only, leaving compact/medium
+  byte-for-byte unchanged. A responsive tweak's *scope* has to match the
+  breakpoint it claims to touch.

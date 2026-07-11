@@ -64,11 +64,19 @@ read `MediaQuery.sizeOf(context).width` and pass it in.
   table/features/description, in a scrolling column capped at
   `maxWidth: 800` (existing `ConstrainedBox`, unchanged).
 - **Two-pane** (`expanded`): `PhotoCarousel` in a left column fixed at
-  `440px`, spec table/features/description in a scrolling right column
-  filling the remainder, both inside a `Row` whose overall content is capped
-  at `maxWidth: 1200` (matching the single-pane cap's ratio: roughly 1.5x,
-  enough for two comfortable columns without stretching edge-to-edge on very
-  wide windows).
+  `440px`, spec table/features/description in a right column filling the
+  remainder, separated by a `24px` gutter, both inside a `Row` whose overall
+  content is capped at `maxWidth: 1200` (matching the single-pane cap's
+  ratio: roughly 1.5x, enough for two comfortable columns without stretching
+  edge-to-edge on very wide windows) and horizontally centered within the
+  viewport (web-parity with the web app's `mx-auto`).
+  - **Scroll model:** the two panes share a **single scroll surface** — the
+    whole `Row` sits inside the page's one `SingleChildScrollView`, so the
+    carousel and details scroll together as one unit. There is no
+    independently-scrolling right pane. (The web app has no two-pane layout
+    at all — a single centered column — so this is a mobile-specific
+    enhancement, and single-surface scroll matches its single-column scroll
+    behavior rather than adding a pinned-carousel pattern the web never had.)
 
 ### SRP (`lib/screens/srp_screen.dart`)
 
@@ -77,8 +85,9 @@ read `MediaQuery.sizeOf(context).width` and pass it in.
 - Filter bar already reflows via `Wrap` — no change needed there.
 - Only change: cap overall content width at `maxWidth: 1200` at `expanded`
   (same cap VDP's two-pane layout uses, for visual consistency between
-  screens), so the grid doesn't stretch absurdly wide on a large desktop
-  window.
+  screens) and horizontally center it within the viewport (web-parity with
+  the web app's `mx-auto`), so the grid doesn't stretch absurdly wide on a
+  large desktop window.
 
 ### Everywhere else
 

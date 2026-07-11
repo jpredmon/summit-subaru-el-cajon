@@ -121,10 +121,12 @@ class _SrpBodyState extends ConsumerState<_SrpBody> {
 
     final windowSizeClass = windowSizeClassOf(MediaQuery.sizeOf(context).width);
     return windowSizeClass == WindowSizeClass.expanded
-        ? ConstrainedBox(
-            key: const Key('srp-width-cap'),
-            constraints: const BoxConstraints(maxWidth: 1200),
-            child: content,
+        ? Center(
+            child: ConstrainedBox(
+              key: const Key('srp-width-cap'),
+              constraints: const BoxConstraints(maxWidth: 1200),
+              child: content,
+            ),
           )
         : content;
   }

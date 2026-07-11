@@ -416,6 +416,14 @@ void main() {
       expect(find.byKey(const Key('srp-width-cap')), findsOneWidget);
       final constrainedBox = tester.widget<ConstrainedBox>(find.byKey(const Key('srp-width-cap')));
       expect(constrainedBox.constraints.maxWidth, 1200);
+      // Capped content is centered (web-parity: mx-auto), not left-aligned.
+      expect(
+        find.ancestor(
+          of: find.byKey(const Key('srp-width-cap')),
+          matching: find.byType(Center),
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('medium width: does not wrap content in the width-cap ConstrainedBox', (tester) async {
