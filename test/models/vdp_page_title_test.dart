@@ -7,7 +7,6 @@ void main() {
   test('loaded branch: "year make model trim | dealerName"', () {
     final title = vdpPageTitle(
       vehicle: vehicle(year: 2021, make: 'Honda', model: 'Civic'),
-      isLoading: false,
       hasData: true,
       dealerName: 'Test Dealer',
     );
@@ -18,7 +17,6 @@ void main() {
   test('not-found branch: loaded data but no matching vehicle', () {
     final title = vdpPageTitle(
       vehicle: null,
-      isLoading: false,
       hasData: true,
       dealerName: 'Test Dealer',
     );
@@ -29,7 +27,6 @@ void main() {
   test('loading branch falls back to plain dealerName', () {
     final title = vdpPageTitle(
       vehicle: null,
-      isLoading: true,
       hasData: false,
       dealerName: 'Test Dealer',
     );
@@ -37,10 +34,9 @@ void main() {
     expect(title, 'Test Dealer');
   });
 
-  test('error branch (not loading, no data) shares the plain dealerName title with loading', () {
+  test('error branch (no data) shares the plain dealerName title with loading', () {
     final title = vdpPageTitle(
       vehicle: null,
-      isLoading: false,
       hasData: false,
       dealerName: 'Test Dealer',
     );

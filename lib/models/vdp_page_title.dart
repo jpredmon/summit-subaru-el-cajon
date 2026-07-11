@@ -7,17 +7,18 @@ import 'vehicle.dart';
 /// loading produce the same text, not because error is untitled).
 /// [hasData] mirrors `data !== undefined` there: true once the inventory
 /// fetch has succeeded at least once, independent of whether [vehicle] was
-/// actually found in it.
+/// actually found in it -- checked alone (not alongside a loading flag) so
+/// a not-found result stays correctly titled even if a future refresh
+/// re-enters a loading state while still holding the previous data.
 String vdpPageTitle({
   required Vehicle? vehicle,
-  required bool isLoading,
   required bool hasData,
   required String dealerName,
 }) {
   if (vehicle != null) {
     return '${vehicle.year} ${vehicle.make} ${vehicle.model} ${vehicle.trim} | $dealerName';
   }
-  if (!isLoading && hasData) {
+  if (hasData) {
     return 'Vehicle Not Found | $dealerName';
   }
   return dealerName;

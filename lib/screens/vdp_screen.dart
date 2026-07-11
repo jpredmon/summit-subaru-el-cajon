@@ -33,7 +33,6 @@ class VdpScreen extends ConsumerWidget {
     setDocumentTitle(
       vdpPageTitle(
         vehicle: vehicle,
-        isLoading: inventoryAsync.isLoading,
         hasData: inventoryAsync.hasValue,
         dealerName: dealerName,
       ),
