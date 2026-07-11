@@ -27,15 +27,17 @@ class SrpScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final inventoryAsync = ref.watch(inventoryProvider);
 
-    return inventoryAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stackTrace) => const Center(
-        child: Padding(
-          padding: EdgeInsets.all(32),
-          child: Text('Failed to load inventory. Please try again later.'),
+    return Scaffold(
+      body: inventoryAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stackTrace) => const Center(
+          child: Padding(
+            padding: EdgeInsets.all(32),
+            child: Text('Failed to load inventory. Please try again later.'),
+          ),
         ),
+        data: (inventory) => _SrpBody(inventory: inventory, onVehicleTap: onVehicleTap),
       ),
-      data: (inventory) => _SrpBody(inventory: inventory, onVehicleTap: onVehicleTap),
     );
   }
 }

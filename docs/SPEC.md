@@ -66,14 +66,25 @@ architecture either way and isn't really optional to cut.
 
 ### API access strategy (Flutter-specific — this differs from the web app)
 
-- **Flutter Web (dev target):** calls the same Vercel-hosted proxy
-  (`/api/inventory`) the React app uses, for the identical reason — a
-  browser tab is subject to CORS enforcement regardless of how it was
-  launched. This matters here specifically because the standing dev
-  workflow (see "Dev environment" below) opens Chrome *manually* rather than
-  through `flutter run -d chrome`'s automated launch — a manually-opened tab
-  is exactly as CORS-subject as an automated one, so the proxy is still
-  required, not optional just because the launch path changed.
+- **Flutter Web (dev target):** calls a Vercel-hosted proxy built the same
+  way (same `/api/inventory` handler pattern) as the React app's, for the
+  identical reason — a browser tab is subject to CORS enforcement regardless
+  of how it was launched. This matters here specifically because the
+  standing dev workflow (see "Dev environment" below) opens Chrome
+  *manually* rather than through `flutter run -d chrome`'s automated launch —
+  a manually-opened tab is exactly as CORS-subject as an automated one, so
+  the proxy is still required, not optional just because the launch path
+  changed.
+  - **Must be this app's own deployment, not the React app's URL.**
+    Confirmed while pulling forward a quick manual-verification override in
+    Task 10: the reference React app's deployed proxy (`api/_inventoryHandler.ts`
+    in that repo) sets no CORS headers at all — it doesn't need to, because
+    that app calls it *same-origin*. Pointing this Flutter app's web build at
+    that same URL is a cross-origin request from a different origin, which
+    the browser rejects regardless of environment (verified via `curl`
+    showing no `Access-Control-Allow-Origin` on the response). Task 15 needs
+    its own Vercel deployment of an equivalent proxy function, not a literal
+    reuse of the React app's.
 - **Native Android build:** calls VINCUE's endpoint **directly**, no proxy —
   CORS is a browser-enforced mechanism only, and Dio/http-style native
   clients aren't subject to it. This means the API key travels with the

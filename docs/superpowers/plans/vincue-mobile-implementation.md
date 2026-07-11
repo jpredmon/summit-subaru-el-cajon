@@ -69,9 +69,15 @@ Status legend: `[ ]` not started, `[~]` in progress, `[x]` done.
   (`srpStateProvider`) — Task 10 swaps that state's persistence to
   `go_router` query params without changing the controls themselves.
 
-- [ ] **10. Routing (`go_router`) + URL query-param sync** — SRP at `/`
+- [x] **10. Routing (`go_router`) + URL query-param sync** — SRP at `/`
   with filter/page state in query params; VDP route `/vehicle/:id` stub.
   **Test first:** query-param → state restore, state change → URL update.
+  `main.dart` now wired to the real router (no more stub `Text` widget) —
+  `inventoryApiClientProvider` still has no override, so it throws by design
+  until Task 15. A temporary same-origin proxy override was tried and
+  reverted: the reference React app's deployed proxy sets no CORS headers,
+  so it only works same-origin for that app, not from this app's own dev
+  server — real notes in SPEC.md/LEARNING.md for Task 15.
 
 - [ ] **11. Photo carousel widget** — current-index state, Previous/Next
   clamped (not wrapped), "X of Y" counter, per-index failure tracking

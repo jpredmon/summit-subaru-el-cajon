@@ -60,6 +60,14 @@ class SrpStateNotifier extends Notifier<SrpFilterState> {
     state = SrpFilterState(filters: state.filters, page: page);
   }
 
+  /// Replaces the whole state as given — unlike the individual setters,
+  /// does not reset [SrpFilterState.page] to 1. Used to seed state from the
+  /// route's query parameters on load (Task 10), where the restored page is
+  /// part of the URL being restored, not a fresh filter change.
+  void restoreFrom(SrpFilterState restored) {
+    state = restored;
+  }
+
   void clearFilters() {
     state = const SrpFilterState();
   }

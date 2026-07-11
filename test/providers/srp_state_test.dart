@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vincue_mobile/models/body_category.dart';
+import 'package:vincue_mobile/models/filter_vehicles.dart';
 import 'package:vincue_mobile/providers/srp_state_provider.dart';
 
 void main() {
@@ -73,6 +74,19 @@ void main() {
 
     expect(c.read(srpStateProvider).page, 4);
     expect(c.read(srpStateProvider).filters.make, 'Honda');
+  });
+
+  test('restoreFrom replaces the whole state as given, without resetting page', () {
+    final c = container();
+    c.read(srpStateProvider.notifier).setPage(5);
+
+    c.read(srpStateProvider.notifier).restoreFrom(
+          const SrpFilterState(filters: VehicleFilters(make: 'Honda'), page: 3),
+        );
+
+    final state = c.read(srpStateProvider);
+    expect(state.filters.make, 'Honda');
+    expect(state.page, 3);
   });
 
   test('clearFilters resets both filters and page to defaults', () {

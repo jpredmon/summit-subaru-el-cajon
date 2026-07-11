@@ -225,3 +225,58 @@ during this build. Appended to, never overwritten.
   `.last` — the closed button's current-selection label can also match the
   same text), `pumpAndSettle()` again. No special Riverpod- or
   Flutter-version-specific handling needed beyond that sequence.
+
+## 2026-07-10 — Task 10: Routing (`go_router`) + URL query-param sync
+
+- **`Future(() {})` vs. `WidgetsBinding.instance.addPostFrameCallback`.**
+  Both defer a call to "right after the current build" — but they're not
+  interchangeable for testing. `Future(() {})` schedules a bare Dart
+  microtask, invisible to Flutter's frame scheduler. `pumpAndSettle()` loops
+  by checking whether a *frame* is still scheduled, not by draining every
+  microtask, so a bare `Future` left over from the *last* build in a settle
+  loop can go unflushed — the callback silently never runs, no error, no
+  warning. `addPostFrameCallback` hooks into the actual frame-completion
+  event, which `pump()`/`pumpAndSettle()` do track correctly. Found via a
+  test that simulated a second in-app navigation (the same code path a
+  browser back/forward-button press exercises) and asserted the restored
+  filter state — it silently stayed unrestored with `Future(() {})`, and
+  fixing it was a one-line swap once the actual mechanism was identified.
+  General lesson: prefer `addPostFrameCallback` over a bare `Future`/
+  `Future.microtask` for any "run after this build" deferral in Flutter,
+  specifically because of how it interacts with test pumping — not just
+  style preference.
+- **Riverpod forbids mutating provider state during a widget lifecycle
+  method.** `initState`/`build`/`didUpdateWidget` all count — Riverpod
+  throws an explicit assertion ("Tried to modify a provider while the widget
+  tree was building") rather than silently corrupting state, specifically
+  because two widgets watching the same provider could otherwise observe
+  different values mid-frame. The fix is always a deferral (see above), per
+  the exact fix Riverpod's own error message suggests.
+- **Bidirectional state↔URL sync needs a loop-breaker.** Two independent
+  reactions — "URL changed → restore state" (`didUpdateWidget`) and "state
+  changed → update URL" (`ref.listen`) — feeding into each other will
+  infinite-loop without a guard. `_lastSyncedParams` (the last query-param
+  map this widget itself produced, either direction) lets each reaction
+  check "did I already account for this?" before acting, breaking the cycle
+  without needing to special-case which direction triggered first.
+- **`Override` (Riverpod's provider-override type) isn't in the public API
+  in this version** — same finding as Task 9, confirmed again here: don't
+  type a shared test helper's `overrides` parameter explicitly; always build
+  `ProviderScope(overrides: [...], child: ...)` inline so Dart infers the
+  type at the call site.
+- **A stale test can reveal a real gap, not just go stale.** `widget_test.dart`
+  (from Task 1) asserted the old stub text and would have failed the moment
+  `main.dart` pointed at real screens — updating it to a genuine smoke test
+  (renders `SrpScreen` via the real router, with `inventoryProvider`
+  overridden) turned a throwaway placeholder into actual regression coverage
+  for the app's boot path.
+- **CORS is enforced per-origin, not per-deployment.** The reference React
+  app's deployed `/api/inventory` Vercel function sets no CORS headers at
+  all — it doesn't need to, because the app calling it is served from the
+  *same* origin, and same-origin requests are never subject to CORS. Calling
+  that same URL from a *different* origin (this Flutter app's own dev
+  server) is a cross-origin request the browser will reject regardless of
+  environment, confirmed via `curl` showing no `Access-Control-Allow-Origin`
+  header on the response. A "it works for the reference app" URL doesn't
+  transfer to a different consumer without its own CORS-safe deployment —
+  this is exactly why Task 15 is real build/infra work, not just an env var.
