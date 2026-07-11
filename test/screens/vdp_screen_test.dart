@@ -116,44 +116,6 @@ void main() {
     expect(find.text('No'), findsOneWidget); // not certified
   });
 
-  testWidgets(
-    'does not show an automatic back arrow when reachable via a pushed route -- the only '
-    'supported way back is the "Back to search results" button, which resets filters by '
-    'design; a default AppBar back arrow would instead pop the raw route and preserve them, '
-    'a second, inconsistent back path',
-    (tester) async {
-      final inventory = Inventory(vehicles: [vehicle(id: 1)], dealerName: 'Test Dealer');
-      await tester.pumpWidget(
-        _wrap(
-          ProviderScope(
-            overrides: [
-              sharedPreferencesProvider.overrideWithValue(prefs),
-              inventoryProvider.overrideWith((ref) => Future.value(inventory)),
-            ],
-            child: Navigator(
-              onGenerateRoute: (settings) => MaterialPageRoute(
-                builder: (context) => Builder(
-                  builder: (context) => TextButton(
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const VdpScreen(vehicleId: 1)),
-                    ),
-                    child: const Text('push'),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-
-      await tester.tap(find.text('push'));
-      await tester.pumpAndSettle();
-
-      expect(find.byType(BackButton), findsNothing);
-      expect(find.text('Back to search results'), findsOneWidget);
-    },
-  );
-
   testWidgets('loaded state: also offers a working link back to the SRP', (tester) async {
     var tapped = false;
     final inventory = Inventory(vehicles: [vehicle(id: 1)], dealerName: 'Test Dealer');

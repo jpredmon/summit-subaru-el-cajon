@@ -544,3 +544,43 @@ recording as a set, not just individually:
   Pulling the skeleton color from `ColorScheme` (same token the "no photo"
   placeholder uses) means it adapts to light/dark automatically — no manual
   grey that would break in dark mode.
+
+## 2026-07-11 — Task 14b: Scoped error boundary
+
+- **Flutter already catches a widget's own build-time exceptions per
+  Element** — `ComponentElement.performRebuild` wraps `build()` in a
+  try/catch and substitutes `ErrorWidget.builder`'s output for just that
+  failing subtree, rather than letting the exception propagate up and take
+  down ancestors. This is very different from React, where an uncaught
+  render error crashes the whole tree unless you write an explicit
+  class-component error boundary. The actual gap versus the web app wasn't
+  "catch the exception" (Flutter does that for free) — it was that
+  `ErrorWidget.builder`'s default output is an ugly debug red screen, and
+  that builder is one process-wide static, so making the *fallback* friendly
+  and *scoped* to routed content (not overriding it globally, which SPEC
+  explicitly calls out as wrong because it'd also swallow chrome failures)
+  needed a dedicated `ErrorBoundary` widget that swaps the static in
+  `initState`/restores it in `dispose`.
+- **`MaterialApp.router`'s `builder` sits *above* the Router's own
+  `Navigator`/`Overlay` — not inside it.** Wiring the shared header there
+  first seemed natural (wrap everything the router produces), but a
+  `Tooltip` (which `IconButton`'s tooltip uses) needs an `Overlay` ancestor,
+  and there wasn't one above the Router. Every widget test using
+  `MaterialApp.router(routerConfig: ...)` directly failed with
+  `debugCheckHasOverlay`. go_router's `ShellRoute` is the fix: it nests the
+  shared shell *inside* the Router's own Navigator (as an ancestor of the
+  nested Navigator it creates for switching between the shell's own child
+  routes), so `Overlay` is available. Confirmed with a widget test comparing
+  `ErrorWidget.builder`'s closure identity before and after navigating
+  SRP→VDP — the shell's `State` is the same instance both times, proving
+  `ShellRoute` doesn't tear it down per navigation (a version-drift risk in
+  a future go_router upgrade, so that comparison is now a permanent
+  regression test, not just a one-off check).
+- **A regression test has to exercise the real wiring, not just the
+  widget in isolation.** The first cut of `app_shell_test.dart` wrapped
+  `AppShell` in a bare `MaterialApp(home: ...)`, which supplies its own
+  internal `Navigator`/`Overlay` regardless of how the real app wires
+  things — so it would have kept passing even if the real router wiring
+  regressed back to the broken `MaterialApp.router(builder: ...)` approach.
+  Closing that gap needed a second test built on the actual
+  `buildAppRouter()` output.

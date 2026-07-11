@@ -127,7 +127,7 @@ Status legend: `[ ]` not started, `[~]` in progress, `[x]` done.
   and VDP; the SRP skeleton grid uses the same max-cross-axis-extent as the
   real grid.
 
-- [ ] **14b. Scoped error boundary** — a dedicated boundary widget wrapping the
+- [x] **14b. Scoped error boundary** — a dedicated boundary widget wrapping the
   router's routed content so a render/build failure in routed content shows a
   fallback **without taking down the header/theme-toggle** (SPEC lines 362–367;
   Flutter equivalent of the web app's `ErrorBoundary` restricted to `<Routes>`).

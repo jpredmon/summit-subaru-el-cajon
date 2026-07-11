@@ -13,7 +13,6 @@ import '../theme/breakpoints.dart';
 import '../utils/document_title.dart';
 import '../utils/format.dart';
 import '../widgets/skeleton.dart';
-import '../widgets/theme_toggle_button.dart';
 import '../widgets/vehicle_card.dart';
 
 const int _pageSize = 12;
@@ -42,18 +41,15 @@ class SrpScreen extends ConsumerWidget {
     final inventoryAsync = ref.watch(inventoryProvider);
     setDocumentTitle(ref.watch(dealerNameProvider));
 
-    return Scaffold(
-      appBar: AppBar(actions: const [ThemeToggleButton()]),
-      body: inventoryAsync.when(
-        loading: () => const _SrpSkeleton(),
-        error: (error, stackTrace) => const Center(
-          child: Padding(
-            padding: EdgeInsets.all(32),
-            child: Text('Failed to load inventory. Please try again later.'),
-          ),
+    return inventoryAsync.when(
+      loading: () => const _SrpSkeleton(),
+      error: (error, stackTrace) => const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: Text('Failed to load inventory. Please try again later.'),
         ),
-        data: (inventory) => _SrpBody(inventory: inventory, onVehicleTap: onVehicleTap),
       ),
+      data: (inventory) => _SrpBody(inventory: inventory, onVehicleTap: onVehicleTap),
     );
   }
 }

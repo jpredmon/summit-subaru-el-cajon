@@ -7,6 +7,7 @@ import '../models/vehicle.dart';
 import '../providers/srp_state_provider.dart';
 import '../screens/srp_screen.dart';
 import '../screens/vdp_screen.dart';
+import '../widgets/app_shell.dart';
 import 'srp_query_params.dart';
 
 /// Caches the app-root [GoRouter] so widgets that watch unrelated providers
@@ -21,16 +22,26 @@ GoRouter buildAppRouter({String initialLocation = '/'}) {
   return GoRouter(
     initialLocation: initialLocation,
     routes: [
-      GoRoute(
-        path: '/',
-        builder: (context, state) => _SrpRoute(queryParameters: state.uri.queryParameters),
-      ),
-      GoRoute(
-        path: '/vehicle/:id',
-        builder: (context, state) {
-          final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
-          return VdpScreen(vehicleId: id, onBackToResults: () => context.go('/'));
-        },
+      // ShellRoute nests AppShell inside the routed content's own Navigator
+      // (rather than MaterialApp.router's `builder`, which sits *above* that
+      // Navigator) so its AppBar/ThemeToggleButton have the Overlay ancestor
+      // their Tooltips need -- MaterialApp.router's builder wraps outside the
+      // Router-provided Navigator/Overlay entirely.
+      ShellRoute(
+        builder: (context, state, child) => AppShell(child: child),
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (context, state) => _SrpRoute(queryParameters: state.uri.queryParameters),
+          ),
+          GoRoute(
+            path: '/vehicle/:id',
+            builder: (context, state) {
+              final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
+              return VdpScreen(vehicleId: id, onBackToResults: () => context.go('/'));
+            },
+          ),
+        ],
       ),
     ],
   );

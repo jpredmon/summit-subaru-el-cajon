@@ -11,7 +11,6 @@ import '../utils/document_title.dart';
 import '../utils/format.dart';
 import '../widgets/photo_carousel.dart';
 import '../widgets/skeleton.dart';
-import '../widgets/theme_toggle_button.dart';
 
 const int _kFeatureBound = 10;
 
@@ -41,26 +40,23 @@ class VdpScreen extends ConsumerWidget {
       ),
     );
 
-    return Scaffold(
-      // The screen's own "Back to search results" control (below) is the
-      // one supported way back -- it resets to '/' with no query params by
-      // design. A default AppBar back-arrow would instead pop the raw
-      // Navigator route, which restores the SRP's prior filters/page
-      // instead of resetting them: two visually adjacent "back" controls
-      // with materially different outcomes.
-      appBar: AppBar(automaticallyImplyLeading: false, actions: const [ThemeToggleButton()]),
-      body: inventoryAsync.when(
-        loading: () => const _VdpSkeleton(),
-        error: (error, stackTrace) => const Center(
-          child: Padding(
-            padding: EdgeInsets.all(32),
-            child: Text('Failed to load inventory. Please try again later.'),
-          ),
+    // The screen's own "Back to search results" control (below, inside
+    // _VdpBody/_NotFound) is the one supported way back -- it resets to '/'
+    // with no query params by design. The shared AppShell's AppBar has no
+    // back arrow at all (it's shared chrome, not per-route), so there's no
+    // second "back" control with a materially different outcome to guard
+    // against here.
+    return inventoryAsync.when(
+      loading: () => const _VdpSkeleton(),
+      error: (error, stackTrace) => const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: Text('Failed to load inventory. Please try again later.'),
         ),
-        data: (inventory) => vehicle == null
-            ? _NotFound(onBackToResults: onBackToResults)
-            : _VdpBody(vehicle: vehicle, onBackToResults: onBackToResults),
       ),
+      data: (inventory) => vehicle == null
+          ? _NotFound(onBackToResults: onBackToResults)
+          : _VdpBody(vehicle: vehicle, onBackToResults: onBackToResults),
     );
   }
 }

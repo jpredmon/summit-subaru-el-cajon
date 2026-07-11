@@ -10,6 +10,7 @@ import 'package:vincue_mobile/providers/theme_mode_provider.dart';
 import 'package:vincue_mobile/router/app_router.dart';
 import 'package:vincue_mobile/screens/srp_screen.dart';
 import 'package:vincue_mobile/screens/vdp_screen.dart';
+import 'package:vincue_mobile/widgets/theme_toggle_button.dart';
 import 'package:vincue_mobile/widgets/vehicle_card.dart';
 
 import '../support/vehicle_factory.dart';
@@ -240,7 +241,81 @@ void main() {
 
     expect(find.byType(VdpScreen), findsOneWidget);
     expect(find.textContaining('7'), findsOneWidget);
+    // The shared AppShell's AppBar has no automatic back arrow (SPEC: the
+    // only supported way back is the "Back to search results" button, which
+    // resets filters by design -- a default back arrow would instead pop the
+    // raw route and preserve them, a second, inconsistent back path). This
+    // must be exercised through the real ShellRoute wiring, not a hand-rolled
+    // Navigator, since the absence of an implied back arrow depends on
+    // exactly how AppShell's AppBar sits relative to the Navigator go_router
+    // builds for pushing between routes.
+    expect(find.byType(BackButton), findsNothing);
   });
+
+  testWidgets(
+    'the shared AppShell chrome (ThemeToggleButton) renders and is tappable at both '
+    'routes when wired through the real ShellRoute -- regression coverage for the '
+    'Tooltip/Overlay-ancestry bug hit when AppShell was wired via '
+    "MaterialApp.router's builder instead",
+    (tester) async {
+      final router = buildAppRouter();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            inventoryProvider.overrideWith(
+              (ref) => Future.value(Inventory(vehicles: [vehicle(id: 1)], dealerName: 'Test Dealer')),
+            ),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ThemeToggleButton), findsOneWidget);
+      await tester.tap(find.byType(ThemeToggleButton));
+      await tester.pump();
+      expect(find.byIcon(Icons.dark_mode), findsOneWidget);
+
+      await tester.tap(find.byType(VehicleCard));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ThemeToggleButton), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    "ShellRoute keeps the same AppShell/ErrorBoundary alive across SRP<->VDP "
+    "navigation -- if it were torn down and rebuilt per-route instead, the "
+    "dispose/initState toggle of the global ErrorWidget.builder could race",
+    (tester) async {
+      final router = buildAppRouter();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            inventoryProvider.overrideWith(
+              (ref) => Future.value(Inventory(vehicles: [vehicle(id: 7)], dealerName: 'Test Dealer')),
+            ),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+      // ErrorBoundary's fallback builder is a bound-method tear-off -- a
+      // fresh State instance produces a distinct closure identity even
+      // though its behavior is identical, so comparing identity across
+      // navigation is a direct check for "same instance", not just "same
+      // behavior".
+      final builderAtSrp = ErrorWidget.builder;
+
+      await tester.tap(find.byType(VehicleCard));
+      await tester.pumpAndSettle();
+      final builderAtVdp = ErrorWidget.builder;
+
+      expect(identical(builderAtSrp, builderAtVdp), isTrue);
+    },
+  );
 
   testWidgets(
     "tapping a not-found VDP's back link navigates back to the SRP",
