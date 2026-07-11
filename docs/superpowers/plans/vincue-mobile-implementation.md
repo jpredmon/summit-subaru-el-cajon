@@ -161,6 +161,30 @@ Status legend: `[ ]` not started, `[~]` in progress, `[x]` done.
   define values → `(baseUrl, attachApiKeyHeader)`, tested directly (no
   compiled build needed).
 
+- [ ] **15b. Vercel CORS-proxy (web build's real data source)** —
+  `api/inventory.ts` (Vercel entry) + `api/_inventoryHandler.ts` (handler),
+  mirroring the reference app's `_inventoryHandler.ts` pattern
+  (server-to-server fetch to VINCUE with `x-api-key`, relay status/body
+  verbatim, 500 on missing key, 502 on upstream failure) plus
+  `Access-Control-Allow-Origin: *` on every response — the addition this
+  app's own deployment needs since, unlike the reference app, it's called
+  cross-origin. Root `package.json` adds `vitest` as the only dev
+  dependency; no runtime deps. Per the approved design
+  (`docs/superpowers/specs/2026-07-11-vercel-proxy-design.md`). **Test
+  first:** three cases against a mocked `fetch` + minimal `res` double —
+  missing key → 500 + CORS header present; success → relays upstream
+  status/body + CORS header present; upstream throw → 502 + CORS header
+  present. **Verification (beyond unit tests):** `vercel dev` locally with a
+  real key in `.env` — curl the endpoint directly, then point the Flutter
+  web-server build's `API_BASE_URL` dart-define at it and confirm real
+  inventory renders at `http://localhost:8765`; then `vercel deploy --prod`
+  under the existing team (`team_OQadPvIU6eFYG0SwrLmDwN3t`) and repeat both
+  checks against the real URL. Secrets: local `.env` (gitignored,
+  `.env.example` committed) for `vercel dev`; JP runs `vercel env add
+  VINCUE_API_KEY production` himself for the real deployment — key value
+  never passed through the assistant. Record the production URL for Task
+  16's write-up.
+
 - [ ] **16. README/submission note** — caching/paging/filtering design +
   dev/build-architecture decisions (proxy vs. direct-VINCUE, `-d web-server`
   vs `-d chrome`). No test — documentation only.
