@@ -741,3 +741,23 @@ Both of these were flagged by the required per-task review, verified against
   plus a second test proving `inventoryProvider` itself resolves to
   `AsyncError` rather than propagating an uncaught exception, verified the
   actual end-to-end behavior.
+
+## 2026-07-11 — Task 15b: Vercel CORS-proxy (Half A)
+
+- **A file under `api/` in a repo deployed to Vercel becomes an HTTP
+  endpoint automatically** — no routing config needed, the file path *is*
+  the URL path (`api/inventory.ts` → `/api/inventory`). The function runs
+  server-side, so it's the right place to hold a secret API key a browser
+  should never see: the browser calls the proxy, the proxy calls the real
+  API with the key attached server-to-server.
+- **CORS (Cross-Origin Resource Sharing) is a browser-only restriction** —
+  it blocks a web page from calling an API on a different origin unless
+  that API opts in via an `Access-Control-Allow-Origin` response header.
+  Native apps (this project's Android build) aren't browsers, so they never
+  hit it and call the real API directly; only the Flutter *web* build needs
+  this proxy, and only because it runs inside a browser tab. This is why
+  the reference React app's own already-deployed proxy couldn't be reused
+  here (Task 10/15 notes): it sets no CORS header because it's only ever
+  called same-origin by that app, and a browser rejects a cross-origin read
+  of a response with no `Access-Control-Allow-Origin` regardless of what's
+  actually in the body.
