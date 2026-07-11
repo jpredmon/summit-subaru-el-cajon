@@ -677,3 +677,67 @@ Both of these were flagged by the required per-task review, verified against
   identity before/after a filter change via `tester.element(...)`, not just
   checking rendered output) failed even with the key in place, which is what
   surfaced the missing callback. Both pieces are required together.
+
+## 2026-07-11 — Task 15: Native/web build-time base-URL wiring
+
+- **`String.fromEnvironment('X')` reads a `--dart-define=X=...` value at
+  *compile* time, not runtime — and returns `''` (empty string), never
+  `null`, when the define wasn't supplied.** This is different from reading
+  an environment variable at runtime (there's no such thing for a compiled
+  Flutter app); the value gets baked into the binary during `flutter build`/
+  `flutter run --dart-define=...`. Because it's never `null`, a resolver
+  function mapping these raw values to typed config has to explicitly treat
+  `''` as "not configured" itself (`apiKey.isEmpty ? null : apiKey` in
+  `lib/config.dart`) — nothing does that normalization for you.
+- **`kIsWeb` (from `package:flutter/foundation.dart`) is the compile-time web
+  check**, used here to decide `attachApiKeyHeader` (SPEC: the proxy build
+  attaches no client-side key; the native build does, since CORS is a
+  browser-only concern). Keeping the resolver itself as a pure function
+  taking `isWeb` as a parameter (rather than reading `kIsWeb` directly
+  inside it) is what makes "tested directly, no compiled build needed"
+  possible — the test passes `true`/`false` for both branches without
+  needing two separate compiled targets.
+- **Verified the wiring with a real `flutter build web`, twice — once with
+  `--dart-define`s supplied, once without** — not just the isolated unit
+  test importing `config.dart` directly. This is the cheap-verification
+  habit from Tasks 14b/14c: unit tests prove the pure function's logic, but
+  only an actual compile proves `main.dart`'s `String.fromEnvironment` +
+  `ProviderScope` override wiring is accepted by the real build pipeline.
+  Both builds succeeded.
+- **The web build's actual CORS proxy deployment (a new Vercel function,
+  per SPEC — not a reuse of the reference React app's) is explicitly out of
+  scope for this task**, per JP's call: this task covers only the Dart-side
+  resolver + wiring, which works with any `API_BASE_URL` value regardless of
+  what serves it. Deploying the proxy is a separate follow-up needing a
+  Vercel account/CLI login and the real API key as a secret.
+- **`Provider.overrideWithValue` vs. `Provider.overrideWith` — eager vs.
+  lazy, and it mattered here.** The first cut built `InventoryApiClient`
+  inline in `main()` and installed it via `overrideWithValue`, which
+  constructs the value immediately, before `runApp()`/`ProviderScope` even
+  exist. `InventoryApiClient`'s constructor deliberately throws
+  `ArgumentError` for a misconfigured native build (an existing, intentional
+  "fail loudly at construction" design from Task 4) — but doing that
+  construction eagerly turned a graceful, in-app failure into an uncaught
+  crash before any UI could render at all. `overrideWith((ref) => ...)`
+  defers construction to the first actual read, which happens inside
+  `inventoryProvider`'s `FutureProvider` body — the same place any other
+  inventory-fetch failure is already caught and turned into an `AsyncError`
+  the SRP/VDP screens' existing `error:` branches handle. Same fix pattern
+  as Task 14b's `ErrorBoundary`/`ShellRoute` lesson: *where* a throw happens
+  in the widget/provider tree determines whether something already built to
+  catch it actually gets the chance to.
+- **Riverpod wraps a provider's creation-time throw in its own
+  `ProviderException`** (`package:flutter_riverpod/misc.dart`, not exported
+  from the main library) when read via `container.read`/`ref.watch` — the
+  original exception is its `.exception` field. A test asserting on the
+  thrown type has to account for this wrapping (`isA<ProviderException>()
+  .having((e) => e.exception, 'exception', isA<...>())`), not just
+  `throwsA(isA<OriginalType>())`.
+- **A required per-task review caught this eager-vs-lazy override bug** (two
+  finder agents independently, from different angles) before commit — same
+  "verify testable things directly" instinct as Tasks 14b/14c: rather than
+  just reasoning about whether the fix was safe, a test proving the
+  `ProviderContainer` constructs without throwing (only reading it throws),
+  plus a second test proving `inventoryProvider` itself resolves to
+  `AsyncError` rather than propagating an uncaught exception, verified the
+  actual end-to-end behavior.

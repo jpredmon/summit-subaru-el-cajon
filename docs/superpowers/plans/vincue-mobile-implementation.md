@@ -155,7 +155,7 @@ Status legend: `[ ]` not started, `[~]` in progress, `[x]` done.
   Flutter's widget-test harness doesn't simulate real Tab-key traversal across
   a full app well.
 
-- [ ] **15. Native/web build-time base-URL wiring** — `main.dart`/`lib/
+- [x] **15. Native/web build-time base-URL wiring** — `main.dart`/`lib/
   config.dart` reads `API_BASE_URL`/`VINCUE_API_KEY` `--dart-define` values,
   constructs Task 4's client. **Test first:** resolver function mapping
   define values → `(baseUrl, attachApiKeyHeader)`, tested directly (no
