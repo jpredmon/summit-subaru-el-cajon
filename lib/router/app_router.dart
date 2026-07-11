@@ -57,7 +57,14 @@ class _SrpRouteState extends ConsumerState<_SrpRoute> {
   @override
   void didUpdateWidget(covariant _SrpRoute oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!mapEquals(oldWidget.queryParameters, widget.queryParameters)) {
+    // Compare against _lastSyncedParams (what THIS widget last wrote/read),
+    // not oldWidget.queryParameters (what changed) -- a self-triggered
+    // navigation (ref.listen -> context.go) always changes the query
+    // parameters from the widget's own perspective too, so comparing against
+    // the old value can't distinguish "the URL changed because we caused it"
+    // from "the URL changed for an external reason" (back/forward, deep
+    // link). Comparing against _lastSyncedParams can.
+    if (!mapEquals(widget.queryParameters, _lastSyncedParams)) {
       _restoreFromUrl(widget.queryParameters);
     }
   }

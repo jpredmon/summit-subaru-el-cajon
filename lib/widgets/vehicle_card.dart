@@ -42,6 +42,8 @@ class VehicleCard extends StatelessWidget {
                   Text(
                     '${vehicle.year} ${vehicle.make} ${vehicle.model} ${vehicle.trim}',
                     style: theme.textTheme.titleMedium,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
                   Text(

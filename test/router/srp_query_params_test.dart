@@ -42,6 +42,13 @@ void main() {
       expect(state.filters.minPrice, isNull);
     });
 
+    test('ignores non-finite price values (Infinity/-Infinity/NaN parse successfully in Dart '
+        'but are not real prices)', () {
+      expect(parseSrpQueryParams(const {'minPrice': 'Infinity'}).filters.minPrice, isNull);
+      expect(parseSrpQueryParams(const {'minPrice': '-Infinity'}).filters.minPrice, isNull);
+      expect(parseSrpQueryParams(const {'maxPrice': 'NaN'}).filters.maxPrice, isNull);
+    });
+
     test('parses a page number', () {
       final state = parseSrpQueryParams(const {'page': '3'});
       expect(state.page, 3);

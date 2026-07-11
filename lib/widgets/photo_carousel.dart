@@ -38,6 +38,14 @@ class _PhotoCarouselState extends State<PhotoCarousel> {
       mainAxisSize: MainAxisSize.min,
       children: [
         VehiclePhoto(
+          // Keyed by index, not just relying on VehiclePhoto's own per-URL
+          // key: two different indices can share the identical URL (dealer
+          // feed duplication), and per-index failure tracking must stay
+          // independent regardless -- an index-based key forces a fresh
+          // VehiclePhoto (and its whole subtree, including the inner
+          // Image's error state) on every index change, even when the URL
+          // repeats.
+          key: ValueKey(_index),
           photoUrl: photos[_index],
           semanticLabel: 'Vehicle photo ${_index + 1} of ${photos.length}',
           imageProvider: widget.imageProvider,

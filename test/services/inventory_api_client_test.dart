@@ -61,6 +61,42 @@ void main() {
         'result': [for (var i = 0; i < count; i++) _rawJson(dealerName: dealerName)],
       });
 
+  group('construction', () {
+    test(
+      'throws when attachApiKeyHeader is true but no apiKey is supplied, as a real runtime '
+      'check (not an assert, which is stripped in release/profile builds)',
+      () {
+        expect(
+          () => InventoryApiClient(
+            baseUrl: baseUrl,
+            attachApiKeyHeader: true,
+            httpClient: httpClient,
+          ),
+          throwsArgumentError,
+        );
+      },
+    );
+
+    test('does not throw when attachApiKeyHeader is true and apiKey is supplied', () {
+      expect(
+        () => InventoryApiClient(
+          baseUrl: baseUrl,
+          attachApiKeyHeader: true,
+          apiKey: 'secret-key',
+          httpClient: httpClient,
+        ),
+        returnsNormally,
+      );
+    });
+
+    test('does not throw when attachApiKeyHeader is false, regardless of apiKey', () {
+      expect(
+        () => InventoryApiClient(baseUrl: baseUrl, attachApiKeyHeader: false, httpClient: httpClient),
+        returnsNormally,
+      );
+    });
+  });
+
   group('headers', () {
     test('omits x-api-key when attachApiKeyHeader is false (proxy build)', () async {
       stub(okBody(), 200);

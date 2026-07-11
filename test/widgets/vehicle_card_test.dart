@@ -80,6 +80,33 @@ void main() {
     expect(tester.widget<VehiclePhoto>(find.byType(VehiclePhoto)).photoUrl, isNull);
   });
 
+  testWidgets(
+    'a long make/model/trim does not overflow the grid tile (fixed height, matching '
+    "srp_screen.dart's actual GridView tile dimensions)",
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 280,
+              height: 340,
+              child: VehicleCard(
+                vehicle: vehicle(
+                  make: 'Extended Super Duty Long-Bed',
+                  model: 'High Roof Extended Cargo Van',
+                  trim: 'Limited Ultimate Reserve 4WD Crew Cab',
+                ),
+                onTap: () {},
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('invokes onTap when tapped', (tester) async {
     var tapped = false;
     await tester.pumpWidget(

@@ -42,19 +42,36 @@ class SrpScreen extends ConsumerWidget {
   }
 }
 
-class _SrpBody extends ConsumerWidget {
+class _SrpBody extends ConsumerStatefulWidget {
   const _SrpBody({required this.inventory, this.onVehicleTap});
 
   final Inventory inventory;
   final void Function(Vehicle vehicle)? onVehicleTap;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_SrpBody> createState() => _SrpBodyState();
+}
+
+class _SrpBodyState extends ConsumerState<_SrpBody> {
+  @override
+  Widget build(BuildContext context) {
     final srpState = ref.watch(srpStateProvider);
     final notifier = ref.read(srpStateProvider.notifier);
-    final options = getFilterOptions(inventory.vehicles);
-    final filtered = filterVehicles(inventory.vehicles, srpState.filters);
+    final options = ref.watch(filterOptionsProvider);
+    final filtered = filterVehicles(widget.inventory.vehicles, srpState.filters);
     final paged = paginate(filtered, srpState.page, _pageSize);
+
+    // A page restored from a URL (or otherwise set directly) can be beyond
+    // the real total for the current filtered result -- paginate() already
+    // clamps it for *this* render, but the stored state itself would keep
+    // claiming the out-of-range page (and re-serialize it back onto the URL)
+    // until the user happened to click Previous/Next. Self-correct the
+    // stored value to match what's actually being shown.
+    if (srpState.page != paged.currentPage) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) notifier.setPage(paged.currentPage);
+      });
+    }
 
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -80,7 +97,7 @@ class _SrpBody extends ConsumerWidget {
                       final vehicle = paged.items[index];
                       return VehicleCard(
                         vehicle: vehicle,
-                        onTap: () => onVehicleTap?.call(vehicle),
+                        onTap: () => widget.onVehicleTap?.call(vehicle),
                       );
                     },
                   ),
@@ -125,6 +142,9 @@ class _FilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final minPriceItems = minPriceOptions(filters.maxPrice);
+    final maxPriceItems = maxPriceOptions(filters.minPrice);
+
     return Wrap(
       spacing: 12,
       runSpacing: 12,
@@ -133,7 +153,7 @@ class _FilterBar extends StatelessWidget {
           label: 'Make',
           child: DropdownButton<String?>(
             key: const Key('make-filter'),
-            value: filters.make,
+            value: _validValue(filters.make, options.makes),
             items: [
               const DropdownMenuItem<String?>(value: null, child: Text('All makes')),
               ...options.makes.map((make) => DropdownMenuItem<String?>(value: make, child: Text(make))),
@@ -145,7 +165,7 @@ class _FilterBar extends StatelessWidget {
           label: 'Body style',
           child: DropdownButton<BodyCategory?>(
             key: const Key('body-filter'),
-            value: filters.body,
+            value: _validValue(filters.body, options.bodyStyles),
             items: [
               const DropdownMenuItem<BodyCategory?>(value: null, child: Text('All body styles')),
               ...options.bodyStyles.map(
@@ -159,10 +179,10 @@ class _FilterBar extends StatelessWidget {
           label: 'Minimum price',
           child: DropdownButton<double?>(
             key: const Key('min-price-filter'),
-            value: filters.minPrice,
+            value: _validValue(filters.minPrice, minPriceItems),
             items: [
               const DropdownMenuItem<double?>(value: null, child: Text('Min price')),
-              ...minPriceOptions(filters.maxPrice)
+              ...minPriceItems
                   .map((threshold) => DropdownMenuItem<double?>(value: threshold, child: Text(formatPrice(threshold)))),
             ],
             onChanged: notifier.setMinPrice,
@@ -172,10 +192,10 @@ class _FilterBar extends StatelessWidget {
           label: 'Maximum price',
           child: DropdownButton<double?>(
             key: const Key('max-price-filter'),
-            value: filters.maxPrice,
+            value: _validValue(filters.maxPrice, maxPriceItems),
             items: [
               const DropdownMenuItem<double?>(value: null, child: Text('Max price')),
-              ...maxPriceOptions(filters.minPrice)
+              ...maxPriceItems
                   .map((threshold) => DropdownMenuItem<double?>(value: threshold, child: Text(formatPrice(threshold)))),
             ],
             onChanged: notifier.setMaxPrice,
@@ -183,6 +203,18 @@ class _FilterBar extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  /// Guards against Flutter's `DropdownButton` "value must match exactly one
+  /// item" invariant: a filter value can arrive from outside this widget's
+  /// own controls (restored from a URL via `SrpStateNotifier.restoreFrom`)
+  /// referencing a make/body/price no longer offered by [validOptions] --
+  /// e.g. a stale deep link, or a price not in the fixed threshold list.
+  /// Falls back to "no constraint" for display rather than crashing; the
+  /// underlying stored filter value is untouched, so it still participates
+  /// in `filterVehicles` as given.
+  static T? _validValue<T>(T? candidate, List<T> validOptions) {
+    return candidate != null && validOptions.contains(candidate) ? candidate : null;
   }
 }
 

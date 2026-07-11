@@ -42,7 +42,9 @@ BodyCategory? _parseBodyCategory(String? raw) {
 
 double? _parseDouble(String? raw) {
   if (raw == null) return null;
-  return double.tryParse(raw);
+  final parsed = double.tryParse(raw);
+  if (parsed == null || !parsed.isFinite) return null;
+  return parsed;
 }
 
 int _parsePage(String? raw) {

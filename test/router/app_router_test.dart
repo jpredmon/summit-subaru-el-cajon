@@ -52,7 +52,9 @@ void main() {
     // The filter dropdowns only offer values actually present in the loaded
     // inventory, so the restored make/body must exist on at least one
     // vehicle here or DropdownButton's "exactly one matching item" invariant
-    // fails.
+    // fails. 13 matching vehicles so page 2 genuinely exists -- SrpScreen
+    // self-corrects a restored page beyond the real total, so a page=2
+    // restore needs a fixture with more than 12 matches to stay at 2.
     final router = buildAppRouter(initialLocation: '/?make=Honda&body=SUV&page=2');
     await tester.pumpWidget(
       ProviderScope(
@@ -60,7 +62,10 @@ void main() {
           inventoryProvider.overrideWith(
             (ref) => Future.value(
               Inventory(
-                vehicles: [vehicle(id: 1, make: 'Honda', bodyStyle: BodyCategory.suv)],
+                vehicles: List.generate(
+                  13,
+                  (i) => vehicle(id: i, make: 'Honda', bodyStyle: BodyCategory.suv),
+                ),
                 dealerName: 'Test Dealer',
               ),
             ),
@@ -114,7 +119,13 @@ void main() {
             inventoryProvider.overrideWith(
               (ref) => Future.value(
                 Inventory(
-                  vehicles: [vehicle(id: 1, make: 'Honda'), vehicle(id: 2, make: 'Toyota')],
+                  // 13 Honda vehicles so page 2 genuinely exists after the
+                  // make=Honda filter -- SrpScreen self-corrects a restored
+                  // page beyond the real total for the filtered result.
+                  vehicles: [
+                    ...List.generate(13, (i) => vehicle(id: i, make: 'Honda')),
+                    vehicle(id: 100, make: 'Toyota'),
+                  ],
                   dealerName: 'Test Dealer',
                 ),
               ),
@@ -196,4 +207,53 @@ void main() {
     expect(find.byType(VdpScreen), findsOneWidget);
     expect(find.textContaining('7'), findsOneWidget);
   });
+
+  testWidgets(
+    'a single filter change does one restore round trip, not a redundant second one for '
+    'the self-triggered navigation it causes',
+    (tester) async {
+      final router = buildAppRouter();
+      final restoreCallCount = <SrpFilterState>[];
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            inventoryProvider.overrideWith(
+              (ref) => Future.value(
+                Inventory(vehicles: [vehicle(id: 1, make: 'Honda')], dealerName: 'Test Dealer'),
+              ),
+            ),
+            srpStateProvider.overrideWith(() => _CountingSrpStateNotifier(restoreCallCount)),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+      restoreCallCount.clear(); // discard the initial-mount restore (empty query params)
+
+      final context = tester.element(find.byType(SrpScreen));
+      ProviderScope.containerOf(context).read(srpStateProvider.notifier).setMake('Honda');
+      await tester.pumpAndSettle();
+
+      expect(
+        restoreCallCount,
+        isEmpty,
+        reason: 'the self-triggered navigation from setMake should be recognized as already '
+            'accounted for (matches _lastSyncedParams) and skip calling restoreFrom again',
+      );
+    },
+  );
+}
+
+/// Counts restoreFrom calls so the test above can prove the router's
+/// self-triggered-navigation guard actually skips the redundant restore.
+class _CountingSrpStateNotifier extends SrpStateNotifier {
+  _CountingSrpStateNotifier(this._calls);
+
+  final List<SrpFilterState> _calls;
+
+  @override
+  void restoreFrom(SrpFilterState restored) {
+    _calls.add(restored);
+    super.restoreFrom(restored);
+  }
 }

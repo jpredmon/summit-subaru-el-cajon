@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vincue_mobile/models/body_category.dart';
+import 'package:vincue_mobile/models/filter_vehicles.dart';
 import 'package:vincue_mobile/models/inventory.dart';
 import 'package:vincue_mobile/providers/inventory_provider.dart';
+import 'package:vincue_mobile/providers/srp_state_provider.dart';
 import 'package:vincue_mobile/screens/srp_screen.dart';
 import 'package:vincue_mobile/widgets/vehicle_card.dart';
 
@@ -214,4 +216,151 @@ void main() {
 
     expect(tapped, [7]);
   });
+
+  group('regression: filter state restored from a URL that no longer matches reality', () {
+    // A deep link, bookmark, or shared URL can carry a make/body/price that
+    // isn't actually offered by the currently loaded inventory (stale link,
+    // different dealer, inventory turnover). DropdownButton requires its
+    // `value` to match exactly one item or throw -- restoring such state
+    // must not crash the screen.
+    Future<BuildContext> pumpWithInventory(WidgetTester tester, Inventory inventory) async {
+      await tester.pumpWidget(
+        _wrap(
+          ProviderScope(
+            overrides: [inventoryProvider.overrideWith((ref) => Future.value(inventory))],
+            child: const SrpScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return tester.element(find.byType(SrpScreen));
+    }
+
+    testWidgets('a restored make absent from the loaded inventory does not crash', (tester) async {
+      final inventory = Inventory(vehicles: [vehicle(id: 1, make: 'Honda')], dealerName: 'Test Dealer');
+      final context = await pumpWithInventory(tester, inventory);
+
+      ProviderScope.containerOf(context).read(srpStateProvider.notifier).restoreFrom(
+            const SrpFilterState(filters: VehicleFilters(make: 'Tesla')),
+          );
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      final dropdown = tester.widget<DropdownButton<String?>>(find.byKey(const Key('make-filter')));
+      expect(dropdown.value, isNull);
+    });
+
+    testWidgets('a restored body style absent from the loaded inventory does not crash', (tester) async {
+      final inventory = Inventory(
+        vehicles: [vehicle(id: 1, bodyStyle: BodyCategory.sedan)],
+        dealerName: 'Test Dealer',
+      );
+      final context = await pumpWithInventory(tester, inventory);
+
+      ProviderScope.containerOf(context).read(srpStateProvider.notifier).restoreFrom(
+            const SrpFilterState(filters: VehicleFilters(body: BodyCategory.truck)),
+          );
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      final dropdown = tester.widget<DropdownButton<BodyCategory?>>(find.byKey(const Key('body-filter')));
+      expect(dropdown.value, isNull);
+    });
+
+    testWidgets('a restored minPrice not in the fixed threshold list does not crash', (tester) async {
+      final inventory = Inventory(vehicles: [vehicle(id: 1, price: 20000)], dealerName: 'Test Dealer');
+      final context = await pumpWithInventory(tester, inventory);
+
+      ProviderScope.containerOf(context).read(srpStateProvider.notifier).restoreFrom(
+            const SrpFilterState(filters: VehicleFilters(minPrice: 22000)),
+          );
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      final dropdown = tester.widget<DropdownButton<double?>>(find.byKey(const Key('min-price-filter')));
+      expect(dropdown.value, isNull);
+    });
+
+    testWidgets('a restored inverted minPrice/maxPrice range does not crash', (tester) async {
+      final inventory = Inventory(vehicles: [vehicle(id: 1, price: 20000)], dealerName: 'Test Dealer');
+      final context = await pumpWithInventory(tester, inventory);
+
+      ProviderScope.containerOf(context).read(srpStateProvider.notifier).restoreFrom(
+            const SrpFilterState(filters: VehicleFilters(minPrice: 50000, maxPrice: 20000)),
+          );
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      final minDropdown = tester.widget<DropdownButton<double?>>(find.byKey(const Key('min-price-filter')));
+      final maxDropdown = tester.widget<DropdownButton<double?>>(find.byKey(const Key('max-price-filter')));
+      expect(minDropdown.value, isNull);
+      expect(maxDropdown.value, isNull);
+    });
+
+    testWidgets('a restored non-finite minPrice (Infinity) does not crash', (tester) async {
+      final inventory = Inventory(vehicles: [vehicle(id: 1, price: 20000)], dealerName: 'Test Dealer');
+      final context = await pumpWithInventory(tester, inventory);
+
+      ProviderScope.containerOf(context).read(srpStateProvider.notifier).restoreFrom(
+            SrpFilterState(filters: VehicleFilters(minPrice: double.infinity)),
+          );
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      final dropdown = tester.widget<DropdownButton<double?>>(find.byKey(const Key('min-price-filter')));
+      expect(dropdown.value, isNull);
+    });
+
+    testWidgets(
+      'a restored page number beyond the real total is self-corrected, so the URL/state '
+      "doesn't keep claiming an out-of-range page until the user clicks Previous/Next",
+      (tester) async {
+        // 13 vehicles / 12 per page = 2 real total pages.
+        final inventory = Inventory(
+          vehicles: List.generate(13, (i) => vehicle(id: i)),
+          dealerName: 'Test Dealer',
+        );
+        final context = await pumpWithInventory(tester, inventory);
+
+        ProviderScope.containerOf(context).read(srpStateProvider.notifier).restoreFrom(
+              const SrpFilterState(page: 50),
+            );
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+        expect(ProviderScope.containerOf(context).read(srpStateProvider).page, 2);
+        expect(find.text('Page 2 of 2'), findsOneWidget);
+      },
+    );
+  });
+
+  testWidgets(
+    'filter options are not recomputed on a page-only state change (only the loaded '
+    'inventory should invalidate them, not srpStateProvider)',
+    (tester) async {
+      final inventory = Inventory(
+        vehicles: List.generate(13, (i) => vehicle(id: i)),
+        dealerName: 'Test Dealer',
+      );
+      await tester.pumpWidget(
+        _wrap(
+          ProviderScope(
+            overrides: [inventoryProvider.overrideWith((ref) => Future.value(inventory))],
+            child: const SrpScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final context = tester.element(find.byType(SrpScreen));
+      final container = ProviderScope.containerOf(context);
+      final before = container.read(filterOptionsProvider);
+
+      container.read(srpStateProvider.notifier).setPage(2);
+      await tester.pumpAndSettle();
+
+      final after = container.read(filterOptionsProvider);
+      expect(identical(before, after), isTrue);
+    },
+  );
 }

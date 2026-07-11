@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/dealer_name.dart';
+import '../models/filter_vehicles.dart';
 import '../models/inventory.dart';
 import '../services/inventory_api_client.dart';
 import '../services/inventory_repository.dart';
@@ -32,4 +33,14 @@ final dealerNameProvider = Provider<String>((ref) {
   // AsyncValue.value is null (not a rethrow) during loading and on error, so
   // this yields the fallback until real data arrives. requireValue would throw.
   return ref.watch(inventoryProvider).value?.dealerName ?? kFallbackDealerName;
+});
+
+/// The SRP filter dropdowns' option sets, derived once per inventory load.
+/// Watching only [inventoryProvider] (not `srpStateProvider`) means Riverpod
+/// caches this and skips recomputing `getFilterOptions`'s two O(n) passes on
+/// every filter/page change -- it only ever depends on which vehicles are
+/// loaded, never on the active filter/page selection.
+final filterOptionsProvider = Provider<FilterOptions>((ref) {
+  final vehicles = ref.watch(inventoryProvider).value?.vehicles ?? const [];
+  return getFilterOptions(vehicles);
 });

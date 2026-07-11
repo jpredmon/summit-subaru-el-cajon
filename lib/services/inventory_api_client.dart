@@ -36,11 +36,15 @@ class InventoryApiClient {
     required this.attachApiKeyHeader,
     this.apiKey,
     http.Client? httpClient,
-  })  : assert(
-          !attachApiKeyHeader || apiKey != null,
-          'apiKey is required when attachApiKeyHeader is true',
-        ),
-        _http = httpClient ?? http.Client();
+  }) : _http = httpClient ?? http.Client() {
+    // A real runtime check, not `assert` -- asserts are stripped in
+    // release/profile builds, which would let a misconfigured native build
+    // (Task 15) silently send unauthenticated requests instead of failing
+    // loudly at construction.
+    if (attachApiKeyHeader && apiKey == null) {
+      throw ArgumentError.value(apiKey, 'apiKey', 'is required when attachApiKeyHeader is true');
+    }
+  }
 
   /// Fully-resolved inventory endpoint URL, GET verbatim. Differs per build
   /// (Vercel proxy on web, direct VINCUE URL on native).

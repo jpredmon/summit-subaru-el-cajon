@@ -310,3 +310,78 @@ during this build. Appended to, never overwritten.
   `find.widgetWithIcon(IconButton, Icons.chevron_right)` — finds the button
   directly when the icon itself is unique enough to identify it, sidestepping
   the tooltip-vs-button distinction entirely.
+
+## 2026-07-10 — Retroactive review fix pass (Tasks 6–11)
+
+A full `/code-review` pass over everything committed so far (prompted by a
+process gap — per-task review had been an inline self-check, not the actual
+skill) surfaced 9 real findings, all fixed with a failing test first. Worth
+recording as a set, not just individually:
+
+- **`DropdownButton`'s "exactly one matching item" invariant is a live crash
+  risk anywhere restored/external state feeds a dropdown's `value`.** Filter
+  state restored from a URL (`SrpStateNotifier.restoreFrom`) was applied
+  directly to `DropdownButton.value` with no check that the restored make/
+  body/price is still one of the currently-offered items. A stale deep link,
+  shared URL, or inventory turnover reaching this path crashes the screen.
+  The fix is a small, reusable pattern: `_validValue(candidate, validOptions)`
+  — display `null` ("no constraint") instead of a value absent from the
+  actual `items` list, without touching the underlying stored filter (which
+  still participates in real filtering). **General lesson:** any
+  `DropdownButton`/`RadioListTile`/similar "value must be one of these
+  items" widget fed by state that didn't come from that widget's own
+  `onChanged` needs this same guard, not just this one screen.
+- **`double.tryParse` accepts `"Infinity"`/`"-Infinity"`/`"NaN"` in Dart** —
+  confirmed empirically, not assumed. A parser that only checks `== null`
+  lets these through as real (non-finite) doubles. Always pair
+  `double.tryParse` with an `.isFinite` check when the input is untrusted
+  (URLs, user text, external APIs) — `transform_vehicle.dart`'s parser
+  already did this; `srp_query_params.dart`'s didn't, and that was the gap.
+- **`assert` is not a validation strategy for anything that must hold in a
+  release build.** `InventoryApiClient`'s "apiKey required when
+  attachApiKeyHeader is true" was `assert`-only, silently compiled out in
+  release/profile mode. Moved to a real `if (...) throw ArgumentError(...)`
+  in the constructor body (Dart doesn't allow arbitrary statements in an
+  initializer list, so this needs a body, not just an `assert` swapped for
+  something else in place). **General lesson:** `assert` is for catching
+  programmer errors during development; anything that must be enforced for
+  real users in a real build needs an actual runtime check.
+- **A "self-correct invalid state" fix needs the same deferred-mutation
+  pattern already established for the URL-sync code**, not a new one. A
+  restored page number beyond the real total (given the current filters) is
+  now corrected via `WidgetsBinding.instance.addPostFrameCallback` +
+  `mounted` guard inside `_SrpBody` — the exact pattern `app_router.dart`
+  already used for the same underlying Riverpod constraint (can't mutate a
+  provider during build). Converting `_SrpBody` from `ConsumerWidget` to
+  `ConsumerStatefulWidget` was required to get a `mounted` check at all.
+- **Comparing against "what changed" instead of "what I already know about"
+  is a common off-by-one in guard conditions.** The router's
+  `didUpdateWidget` guard compared `oldWidget.queryParameters` vs
+  `widget.queryParameters` (did the URL change at all) instead of
+  `widget.queryParameters` vs `_lastSyncedParams` (is this a change I
+  haven't already accounted for) — the former can't distinguish a
+  self-triggered navigation (which always changes the URL) from a genuine
+  external one, causing a redundant parse/restore round trip on every single
+  filter change. Fixed with a call-counting `Notifier` subclass in the test
+  (`_CountingSrpStateNotifier`) to prove the redundant call disappeared,
+  since the wrong END state was never observable — only the wasted
+  intermediate work was.
+- **Let Riverpod's own caching solve a memoization problem instead of
+  hand-rolling one.** `getFilterOptions` was recomputing on every SRP
+  rebuild, including page-only changes that can't possibly affect it (it
+  only depends on the loaded inventory, never on filters/page). Moving it
+  into its own `Provider<FilterOptions>` that watches only `inventoryProvider`
+  gets memoization for free — Riverpod skips recomputing a provider's body
+  when nothing it watches has changed, no manual "cache + compare inputs"
+  code needed. `filterVehicles` has a similar (smaller) inefficiency on
+  page-only changes but was left as-is: splitting it out cleanly would need
+  restructuring `srpStateProvider` itself, disproportionate effort for what's
+  sub-millisecond at realistic dealership inventory sizes.
+- **A `ValueKey` scoped to the wrong thing enforces a narrower invariant
+  than intended.** `VehiclePhoto`'s per-URL key (Task 8) is correct for its
+  own job, but `PhotoCarousel` swapping `photoUrl` alone means two different
+  *indices* sharing an identical URL (a plausible dealer-feed duplication)
+  would share failure/retry state — "per URL" by accident, not "per index"
+  as intended. Giving the `VehiclePhoto` itself an index-based
+  `key: ValueKey(_index)` in the carousel restores true per-index
+  independence regardless of URL duplication.

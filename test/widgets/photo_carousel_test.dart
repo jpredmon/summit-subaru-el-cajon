@@ -164,6 +164,36 @@ void main() {
       expect(find.bySemanticsLabel('Vehicle photo 1 of 2'), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'two different indices sharing the identical photo URL still retry independently '
+    '(per-index tracking, not per-URL)',
+    (tester) async {
+      var callCount = 0;
+      ImageProvider provider(String url) {
+        callCount++;
+        // Only the very first resolution (index 0's first attempt) fails;
+        // every later resolution succeeds -- including index 1, which shares
+        // the SAME url string as index 0.
+        return callCount == 1 ? _alwaysFailingImageProvider(url) : _workingImageProvider(url);
+      }
+
+      await tester.pumpWidget(
+        _wrap(PhotoCarousel(photos: const ['dup.jpg', 'dup.jpg'], imageProvider: provider)),
+      );
+      await tester.pumpAndSettle();
+      expect(find.bySemanticsLabel('No photo available'), findsOneWidget);
+
+      await tester.tap(_nextButton);
+      await tester.pumpAndSettle();
+
+      // Index 1 has the identical URL as the failed index 0, but is a
+      // genuinely independent slot -- it must attempt its own fresh load
+      // rather than immediately reusing index 0's cached failure.
+      expect(find.bySemanticsLabel('No photo available'), findsNothing);
+      expect(find.bySemanticsLabel('Vehicle photo 2 of 2'), findsOneWidget);
+    },
+  );
 }
 
 /// A minimal valid 1x1 transparent PNG, so `Image`'s decoder succeeds.
