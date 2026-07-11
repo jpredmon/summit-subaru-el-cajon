@@ -9,6 +9,7 @@ import '../theme/app_theme.dart';
 import '../utils/document_title.dart';
 import '../utils/format.dart';
 import '../widgets/photo_carousel.dart';
+import '../widgets/theme_toggle_button.dart';
 
 const int _kFeatureBound = 10;
 
@@ -39,6 +40,13 @@ class VdpScreen extends ConsumerWidget {
     );
 
     return Scaffold(
+      // The screen's own "Back to search results" control (below) is the
+      // one supported way back -- it resets to '/' with no query params by
+      // design. A default AppBar back-arrow would instead pop the raw
+      // Navigator route, which restores the SRP's prior filters/page
+      // instead of resetting them: two visually adjacent "back" controls
+      // with materially different outcomes.
+      appBar: AppBar(automaticallyImplyLeading: false, actions: const [ThemeToggleButton()]),
       body: inventoryAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stackTrace) => const Center(

@@ -11,6 +11,7 @@ import '../providers/srp_state_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/document_title.dart';
 import '../utils/format.dart';
+import '../widgets/theme_toggle_button.dart';
 import '../widgets/vehicle_card.dart';
 
 const int _pageSize = 12;
@@ -30,6 +31,7 @@ class SrpScreen extends ConsumerWidget {
     setDocumentTitle(ref.watch(dealerNameProvider));
 
     return Scaffold(
+      appBar: AppBar(actions: const [ThemeToggleButton()]),
       body: inventoryAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stackTrace) => const Center(

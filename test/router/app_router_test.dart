@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vincue_mobile/models/body_category.dart';
 import 'package:vincue_mobile/models/inventory.dart';
 import 'package:vincue_mobile/providers/inventory_provider.dart';
 import 'package:vincue_mobile/providers/srp_state_provider.dart';
+import 'package:vincue_mobile/providers/theme_mode_provider.dart';
 import 'package:vincue_mobile/router/app_router.dart';
 import 'package:vincue_mobile/screens/srp_screen.dart';
 import 'package:vincue_mobile/screens/vdp_screen.dart';
@@ -13,11 +15,36 @@ import 'package:vincue_mobile/widgets/vehicle_card.dart';
 import '../support/vehicle_factory.dart';
 
 void main() {
+  late SharedPreferences prefs;
+
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    prefs = await SharedPreferences.getInstance();
+  });
+
+  test(
+    'appRouterProvider caches a single GoRouter instance, so a rebuild '
+    "triggered by an unrelated provider (e.g. themeModeProvider) can't "
+    'reset navigation back to the initial route',
+    () {
+      final container = ProviderContainer(
+        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      );
+      addTearDown(container.dispose);
+
+      final first = container.read(appRouterProvider);
+      final second = container.read(appRouterProvider);
+
+      expect(identical(first, second), isTrue);
+    },
+  );
+
   testWidgets('renders SrpScreen at the root path', (tester) async {
     final router = buildAppRouter();
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
           inventoryProvider.overrideWith(
             (ref) => Future.value(const Inventory(vehicles: [], dealerName: 'Test Dealer')),
           ),
@@ -35,6 +62,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
           inventoryProvider.overrideWith(
             (ref) => Future.value(Inventory(vehicles: [vehicle(id: 42, make: 'Mazda')], dealerName: 'Test Dealer')),
           ),
@@ -60,6 +88,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
           inventoryProvider.overrideWith(
             (ref) => Future.value(
               Inventory(
@@ -90,6 +119,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
           inventoryProvider.overrideWith(
             (ref) => Future.value(
               Inventory(vehicles: [vehicle(id: 1, make: 'Toyota')], dealerName: 'Test Dealer'),
@@ -117,6 +147,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
             inventoryProvider.overrideWith(
               (ref) => Future.value(
                 Inventory(
@@ -165,6 +196,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
             inventoryProvider.overrideWith(
               (ref) => Future.value(
                 Inventory(
@@ -193,6 +225,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
           inventoryProvider.overrideWith(
             (ref) => Future.value(Inventory(vehicles: [vehicle(id: 7)], dealerName: 'Test Dealer')),
           ),
@@ -216,6 +249,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
             inventoryProvider.overrideWith(
               (ref) => Future.value(Inventory(vehicles: [vehicle(id: 1)], dealerName: 'Test Dealer')),
             ),
@@ -241,6 +275,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
             inventoryProvider.overrideWith(
               (ref) => Future.value(Inventory(vehicles: [vehicle(id: 1)], dealerName: 'Test Dealer')),
             ),
@@ -268,6 +303,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
             inventoryProvider.overrideWith(
               (ref) => Future.value(
                 Inventory(vehicles: [vehicle(id: 1, make: 'Honda')], dealerName: 'Test Dealer'),

@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vincue_mobile/models/body_category.dart';
 import 'package:vincue_mobile/models/filter_vehicles.dart';
 import 'package:vincue_mobile/models/inventory.dart';
 import 'package:vincue_mobile/providers/inventory_provider.dart';
 import 'package:vincue_mobile/providers/srp_state_provider.dart';
+import 'package:vincue_mobile/providers/theme_mode_provider.dart';
 import 'package:vincue_mobile/screens/srp_screen.dart';
 import 'package:vincue_mobile/widgets/vehicle_card.dart';
 
@@ -16,11 +18,20 @@ import '../support/vehicle_factory.dart';
 Widget _wrap(Widget child) => MaterialApp(home: Scaffold(body: child));
 
 void main() {
+  late SharedPreferences prefs;
+
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    prefs = await SharedPreferences.getInstance();
+  });
+
   testWidgets('shows a loading indicator while inventory is loading', (tester) async {
     await tester.pumpWidget(
       _wrap(
         ProviderScope(
-          overrides: [inventoryProvider.overrideWith((ref) => Completer<Inventory>().future)],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            inventoryProvider.overrideWith((ref) => Completer<Inventory>().future)],
           child: const SrpScreen(),
         ),
       ),
@@ -33,7 +44,9 @@ void main() {
     await tester.pumpWidget(
       _wrap(
         ProviderScope(
-          overrides: [inventoryProvider.overrideWith((ref) => Future<Inventory>.error(Exception('boom')))],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            inventoryProvider.overrideWith((ref) => Future<Inventory>.error(Exception('boom')))],
           child: const SrpScreen(),
         ),
       ),
@@ -54,7 +67,9 @@ void main() {
     await tester.pumpWidget(
       _wrap(
         ProviderScope(
-          overrides: [inventoryProvider.overrideWith((ref) => Future.value(inventory))],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            inventoryProvider.overrideWith((ref) => Future.value(inventory))],
           child: const SrpScreen(),
         ),
       ),
@@ -85,7 +100,9 @@ void main() {
       await tester.pumpWidget(
         _wrap(
           ProviderScope(
-            overrides: [inventoryProvider.overrideWith((ref) => Future.value(inventory))],
+            overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            inventoryProvider.overrideWith((ref) => Future.value(inventory))],
             child: const SrpScreen(),
           ),
         ),
@@ -122,7 +139,9 @@ void main() {
     await tester.pumpWidget(
       _wrap(
         ProviderScope(
-          overrides: [inventoryProvider.overrideWith((ref) => Future.value(inventory))],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            inventoryProvider.overrideWith((ref) => Future.value(inventory))],
           child: const SrpScreen(),
         ),
       ),
@@ -147,7 +166,9 @@ void main() {
     await tester.pumpWidget(
       _wrap(
         ProviderScope(
-          overrides: [inventoryProvider.overrideWith((ref) => Future.value(twelve))],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            inventoryProvider.overrideWith((ref) => Future.value(twelve))],
           child: const SrpScreen(),
         ),
       ),
@@ -168,7 +189,9 @@ void main() {
       await tester.pumpWidget(
         _wrap(
           ProviderScope(
-            overrides: [inventoryProvider.overrideWith((ref) => Future.value(thirteen))],
+            overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            inventoryProvider.overrideWith((ref) => Future.value(thirteen))],
             child: const SrpScreen(),
           ),
         ),
@@ -205,7 +228,9 @@ void main() {
     await tester.pumpWidget(
       _wrap(
         ProviderScope(
-          overrides: [inventoryProvider.overrideWith((ref) => Future.value(inventory))],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            inventoryProvider.overrideWith((ref) => Future.value(inventory))],
           child: SrpScreen(onVehicleTap: (v) => tapped.add(v.id)),
         ),
       ),
@@ -227,7 +252,9 @@ void main() {
       await tester.pumpWidget(
         _wrap(
           ProviderScope(
-            overrides: [inventoryProvider.overrideWith((ref) => Future.value(inventory))],
+            overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            inventoryProvider.overrideWith((ref) => Future.value(inventory))],
             child: const SrpScreen(),
           ),
         ),
@@ -345,7 +372,9 @@ void main() {
       await tester.pumpWidget(
         _wrap(
           ProviderScope(
-            overrides: [inventoryProvider.overrideWith((ref) => Future.value(inventory))],
+            overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            inventoryProvider.overrideWith((ref) => Future.value(inventory))],
             child: const SrpScreen(),
           ),
         ),

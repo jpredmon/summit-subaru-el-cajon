@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vincue_mobile/models/inventory.dart';
 import 'package:vincue_mobile/providers/inventory_provider.dart';
+import 'package:vincue_mobile/providers/theme_mode_provider.dart';
 import 'package:vincue_mobile/screens/vdp_screen.dart';
 
 import '../support/vehicle_factory.dart';
@@ -12,11 +14,20 @@ import '../support/vehicle_factory.dart';
 Widget _wrap(Widget child) => MaterialApp(home: Scaffold(body: child));
 
 void main() {
+  late SharedPreferences prefs;
+
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    prefs = await SharedPreferences.getInstance();
+  });
+
   testWidgets('loading state: shows a loading indicator', (tester) async {
     await tester.pumpWidget(
       _wrap(
         ProviderScope(
-          overrides: [inventoryProvider.overrideWith((ref) => Completer<Inventory>().future)],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            inventoryProvider.overrideWith((ref) => Completer<Inventory>().future)],
           child: const VdpScreen(vehicleId: 1),
         ),
       ),
@@ -29,7 +40,9 @@ void main() {
     await tester.pumpWidget(
       _wrap(
         ProviderScope(
-          overrides: [inventoryProvider.overrideWith((ref) => Future<Inventory>.error(Exception('boom')))],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            inventoryProvider.overrideWith((ref) => Future<Inventory>.error(Exception('boom')))],
           child: const VdpScreen(vehicleId: 1),
         ),
       ),
@@ -47,7 +60,9 @@ void main() {
       await tester.pumpWidget(
         _wrap(
           ProviderScope(
-            overrides: [inventoryProvider.overrideWith((ref) => Future.value(inventory))],
+            overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            inventoryProvider.overrideWith((ref) => Future.value(inventory))],
             child: VdpScreen(vehicleId: 999, onBackToResults: () => tapped = true),
           ),
         ),
@@ -75,7 +90,9 @@ void main() {
     await tester.pumpWidget(
       _wrap(
         ProviderScope(
-          overrides: [inventoryProvider.overrideWith((ref) => Future.value(inventory))],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            inventoryProvider.overrideWith((ref) => Future.value(inventory))],
           child: const VdpScreen(vehicleId: 1),
         ),
       ),
@@ -95,13 +112,53 @@ void main() {
     expect(find.text('No'), findsOneWidget); // not certified
   });
 
+  testWidgets(
+    'does not show an automatic back arrow when reachable via a pushed route -- the only '
+    'supported way back is the "Back to search results" button, which resets filters by '
+    'design; a default AppBar back arrow would instead pop the raw route and preserve them, '
+    'a second, inconsistent back path',
+    (tester) async {
+      final inventory = Inventory(vehicles: [vehicle(id: 1)], dealerName: 'Test Dealer');
+      await tester.pumpWidget(
+        _wrap(
+          ProviderScope(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              inventoryProvider.overrideWith((ref) => Future.value(inventory)),
+            ],
+            child: Navigator(
+              onGenerateRoute: (settings) => MaterialPageRoute(
+                builder: (context) => Builder(
+                  builder: (context) => TextButton(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const VdpScreen(vehicleId: 1)),
+                    ),
+                    child: const Text('push'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('push'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(BackButton), findsNothing);
+      expect(find.text('Back to search results'), findsOneWidget);
+    },
+  );
+
   testWidgets('loaded state: also offers a working link back to the SRP', (tester) async {
     var tapped = false;
     final inventory = Inventory(vehicles: [vehicle(id: 1)], dealerName: 'Test Dealer');
     await tester.pumpWidget(
       _wrap(
         ProviderScope(
-          overrides: [inventoryProvider.overrideWith((ref) => Future.value(inventory))],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            inventoryProvider.overrideWith((ref) => Future.value(inventory))],
           child: VdpScreen(vehicleId: 1, onBackToResults: () => tapped = true),
         ),
       ),
@@ -119,7 +176,9 @@ void main() {
     await tester.pumpWidget(
       _wrap(
         ProviderScope(
-          overrides: [inventoryProvider.overrideWith((ref) => Future.value(inventory))],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            inventoryProvider.overrideWith((ref) => Future.value(inventory))],
           child: const VdpScreen(vehicleId: 1),
         ),
       ),
@@ -137,7 +196,9 @@ void main() {
     await tester.pumpWidget(
       _wrap(
         ProviderScope(
-          overrides: [inventoryProvider.overrideWith((ref) => Future.value(inventory))],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            inventoryProvider.overrideWith((ref) => Future.value(inventory))],
           child: const VdpScreen(vehicleId: 1),
         ),
       ),
@@ -152,7 +213,9 @@ void main() {
     await tester.pumpWidget(
       _wrap(
         ProviderScope(
-          overrides: [inventoryProvider.overrideWith((ref) => Future.value(inventory))],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            inventoryProvider.overrideWith((ref) => Future.value(inventory))],
           child: const VdpScreen(vehicleId: 1),
         ),
       ),
@@ -169,7 +232,9 @@ void main() {
       await tester.pumpWidget(
         _wrap(
           ProviderScope(
-            overrides: [inventoryProvider.overrideWith((ref) => Future.value(inventory))],
+            overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            inventoryProvider.overrideWith((ref) => Future.value(inventory))],
             child: const VdpScreen(vehicleId: 1),
           ),
         ),
@@ -185,7 +250,9 @@ void main() {
       await tester.pumpWidget(
         _wrap(
           ProviderScope(
-            overrides: [inventoryProvider.overrideWith((ref) => Future.value(inventory))],
+            overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            inventoryProvider.overrideWith((ref) => Future.value(inventory))],
             child: const VdpScreen(vehicleId: 1),
           ),
         ),
@@ -209,7 +276,9 @@ void main() {
         await tester.pumpWidget(
           _wrap(
             ProviderScope(
-              overrides: [inventoryProvider.overrideWith((ref) => Future.value(inventory))],
+              overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            inventoryProvider.overrideWith((ref) => Future.value(inventory))],
               child: const VdpScreen(vehicleId: 1),
             ),
           ),
@@ -248,7 +317,9 @@ void main() {
       await tester.pumpWidget(
         _wrap(
           ProviderScope(
-            overrides: [inventoryProvider.overrideWith((ref) => Future.value(inventory))],
+            overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            inventoryProvider.overrideWith((ref) => Future.value(inventory))],
             child: const VdpScreen(vehicleId: 1),
           ),
         ),
@@ -264,7 +335,9 @@ void main() {
       await tester.pumpWidget(
         _wrap(
           ProviderScope(
-            overrides: [inventoryProvider.overrideWith((ref) => Future.value(inventory))],
+            overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            inventoryProvider.overrideWith((ref) => Future.value(inventory))],
             child: const VdpScreen(vehicleId: 1),
           ),
         ),

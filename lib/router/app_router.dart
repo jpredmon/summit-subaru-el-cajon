@@ -9,6 +9,12 @@ import '../screens/srp_screen.dart';
 import '../screens/vdp_screen.dart';
 import 'srp_query_params.dart';
 
+/// Caches the app-root [GoRouter] so widgets that watch unrelated providers
+/// (e.g. [VincueMobileApp] watching `themeModeProvider`) don't rebuild it --
+/// a fresh [GoRouter] instance resets navigation back to its initial
+/// location, discarding whatever route/query-param state the user was on.
+final appRouterProvider = Provider<GoRouter>((ref) => buildAppRouter());
+
 /// App-wide route table: SRP at `/` (filter/page state synced to query
 /// parameters — see [_SrpRoute]), VDP at `/vehicle/:id`.
 GoRouter buildAppRouter({String initialLocation = '/'}) {

@@ -92,9 +92,20 @@ Status legend: `[ ]` not started, `[~]` in progress, `[x]` done.
   branch page title. **Test first:** one test per state, features boundary
   (0/≤10/>10), not-found → link-back flow.
 
-- [ ] **13. Dark mode** — manual toggle, `shared_preferences`-backed,
+- [x] **13. Dark mode** — manual toggle, `shared_preferences`-backed,
   defaults dark on first launch, `ThemeMode` resolved pre-first-frame.
   **Test first:** default-dark with no stored pref; persist/restore toggle.
+  Scope note (discussed and approved before starting): the plan's test-first
+  line only covers the provider; the toggle also needs a real control to be
+  usable, so a `ThemeToggleButton` was added to both SRP and VDP's `AppBar`s
+  now rather than deferred to a later shared-header task. Code review (run
+  before commit) caught and fixed two regressions this task's own changes
+  introduced: `VincueMobileApp` watching `themeModeProvider` made it
+  recreate the `GoRouter` (and reset navigation) on every toggle -- fixed by
+  caching it behind `appRouterProvider`; and the new `AppBar` gave `VdpScreen`
+  an automatic back arrow that bypassed the existing "Back to search
+  results" button's filter-reset behavior -- fixed with
+  `automaticallyImplyLeading: false`.
 
 - [ ] **14. Accessibility & reduced motion** — focus-highlight decoration
   matching actual corner radius; `MediaQuery.disableAnimations` applied to

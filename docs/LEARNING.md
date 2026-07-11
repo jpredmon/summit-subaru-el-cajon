@@ -430,3 +430,45 @@ recording as a set, not just individually:
   value) = entry;` in the `.map()` callback does the same job with one
   fewer concept and no risk of a duplicate key silently overwriting an
   entry.
+
+## 2026-07-11 — Task 13: Dark mode
+
+- **Awaiting a plugin before `runApp` is how Flutter avoids the "flash of
+  wrong theme" the web version needed a duplicated inline script to work
+  around.** `main()` is `async`, calls `WidgetsFlutterBinding
+  .ensureInitialized()`, then `await SharedPreferences.getInstance()` —
+  only once that resolves does `runApp` fire, with the loaded prefs handed
+  in via `sharedPreferencesProvider.overrideWithValue(prefs)`. Because
+  `ThemeModeNotifier.build()` reads that already-resolved value
+  synchronously, `ThemeMode` is correct on the very first frame; there's no
+  async gap to flash the wrong theme during, unlike a browser's JS module
+  timing.
+- **A `Provider` that throws `UnimplementedError` unless overridden is this
+  codebase's established pattern for "no safe default, must be supplied by
+  the caller"** (already used for `inventoryApiClientProvider`, Task 4).
+  `sharedPreferencesProvider` follows the same shape: the real app overrides
+  it once at the root with the awaited instance, and every test overrides it
+  with `SharedPreferences.setMockInitialValues({})` +
+  `SharedPreferences.getInstance()`.
+- **A `Provider<T>` caches its value across rebuilds of unrelated watchers —
+  which matters a lot once more than one provider is watched in the same
+  `build()`.** `VincueMobileApp.build()` originally called `buildAppRouter()`
+  inline. That was harmless while `themeMode` was a hardcoded literal (the
+  widget never rebuilt), but once it started watching `themeModeProvider`
+  too, every toggle reran `build()` and — since `buildAppRouter()` allocates
+  a brand-new `GoRouter` each call — silently reset navigation back to `/`.
+  Moving `buildAppRouter()` behind its own `Provider<GoRouter>`
+  (`appRouterProvider`) fixes it: Riverpod computes it once and hands back
+  the same instance on every subsequent read, so an unrelated provider
+  changing no longer touches routing state at all. Caught by code review,
+  not by TDD — worth remembering that "add a second `ref.watch` to an
+  existing `build()`" is exactly the kind of change that can silently break
+  something several lines away that looks unrelated.
+- **`AppBar`'s automatic back arrow is keyed off `Navigator.canPop()`, not
+  off whether the screen provides its own way back.** Adding a bare
+  `AppBar()` to `VdpScreen` (reached via `context.push`, so `canPop()` is
+  true) made Flutter insert a back arrow for free — but this app already had
+  an explicit "Back to search results" button with different, intentional
+  behavior (resets filters), so the two controls silently disagreed.
+  `AppBar(automaticallyImplyLeading: false, ...)` opts out of the automatic
+  one, leaving the explicit button as the only way back.
