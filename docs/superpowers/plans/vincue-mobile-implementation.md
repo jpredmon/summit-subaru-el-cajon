@@ -161,7 +161,7 @@ Status legend: `[ ]` not started, `[~]` in progress, `[x]` done.
   define values → `(baseUrl, attachApiKeyHeader)`, tested directly (no
   compiled build needed).
 
-- [ ] **15b. Vercel CORS-proxy (web build's real data source)** —
+- [~] **15b. Vercel CORS-proxy (web build's real data source)** —
   `api/inventory.ts` (Vercel entry) + `api/_inventoryHandler.ts` (handler),
   mirroring the reference app's `_inventoryHandler.ts` pattern
   (server-to-server fetch to VINCUE with `x-api-key`, relay status/body
@@ -184,6 +184,9 @@ Status legend: `[ ]` not started, `[~]` in progress, `[x]` done.
   VINCUE_API_KEY production` himself for the real deployment — key value
   never passed through the assistant. Record the production URL for Task
   16's write-up.
+  **Status:** Half A (handler, entry point, tests, `package.json`) done,
+  committed `c150ec0`. Half B (`vercel dev`, real deploy) outstanding —
+  needs JP's Vercel login + real `VINCUE_API_KEY`.
 
 - [ ] **16. README/submission note** — caching/paging/filtering design +
   dev/build-architecture decisions (proxy vs. direct-VINCUE, `-d web-server`
