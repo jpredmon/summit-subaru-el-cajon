@@ -43,3 +43,12 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Node/Vercel proxy (api/) related
+node_modules
+.vercel
+
+# Env files (never commit secrets)
+.env
+.env.*
+!.env.example
