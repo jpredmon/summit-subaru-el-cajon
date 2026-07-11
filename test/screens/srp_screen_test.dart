@@ -392,4 +392,52 @@ void main() {
       expect(identical(before, after), isTrue);
     },
   );
+
+  group('width cap at expanded viewport', () {
+    testWidgets('expanded width: wraps content in a 1200-max-width ConstrainedBox', (tester) async {
+      tester.view.physicalSize = const Size(1000, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final inventory = Inventory(vehicles: [vehicle(id: 1)], dealerName: 'Test Dealer');
+      await tester.pumpWidget(
+        _wrap(
+          ProviderScope(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              inventoryProvider.overrideWith((ref) => Future.value(inventory)),
+            ],
+            child: const SrpScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('srp-width-cap')), findsOneWidget);
+      final constrainedBox = tester.widget<ConstrainedBox>(find.byKey(const Key('srp-width-cap')));
+      expect(constrainedBox.constraints.maxWidth, 1200);
+    });
+
+    testWidgets('medium width: does not wrap content in the width-cap ConstrainedBox', (tester) async {
+      tester.view.physicalSize = const Size(700, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final inventory = Inventory(vehicles: [vehicle(id: 1)], dealerName: 'Test Dealer');
+      await tester.pumpWidget(
+        _wrap(
+          ProviderScope(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              inventoryProvider.overrideWith((ref) => Future.value(inventory)),
+            ],
+            child: const SrpScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('srp-width-cap')), findsNothing);
+    });
+  });
 }

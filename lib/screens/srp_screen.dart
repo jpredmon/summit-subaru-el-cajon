@@ -9,6 +9,7 @@ import '../models/vehicle.dart';
 import '../providers/inventory_provider.dart';
 import '../providers/srp_state_provider.dart';
 import '../theme/app_theme.dart';
+import '../theme/breakpoints.dart';
 import '../utils/document_title.dart';
 import '../utils/format.dart';
 import '../widgets/theme_toggle_button.dart';
@@ -77,7 +78,7 @@ class _SrpBodyState extends ConsumerState<_SrpBody> {
       });
     }
 
-    return Padding(
+    final content = Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -117,6 +118,15 @@ class _SrpBodyState extends ConsumerState<_SrpBody> {
         ],
       ),
     );
+
+    final windowSizeClass = windowSizeClassOf(MediaQuery.sizeOf(context).width);
+    return windowSizeClass == WindowSizeClass.expanded
+        ? ConstrainedBox(
+            key: const Key('srp-width-cap'),
+            constraints: const BoxConstraints(maxWidth: 1200),
+            child: content,
+          )
+        : content;
   }
 }
 
