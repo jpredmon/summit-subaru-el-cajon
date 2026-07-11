@@ -10,8 +10,7 @@ import '../screens/vdp_screen.dart';
 import 'srp_query_params.dart';
 
 /// App-wide route table: SRP at `/` (filter/page state synced to query
-/// parameters — see [_SrpRoute]), VDP at `/vehicle/:id` (stub; Task 12
-/// replaces [VdpScreen]'s body with the real four-state page).
+/// parameters — see [_SrpRoute]), VDP at `/vehicle/:id`.
 GoRouter buildAppRouter({String initialLocation = '/'}) {
   return GoRouter(
     initialLocation: initialLocation,
@@ -24,7 +23,7 @@ GoRouter buildAppRouter({String initialLocation = '/'}) {
         path: '/vehicle/:id',
         builder: (context, state) {
           final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
-          return VdpScreen(vehicleId: id);
+          return VdpScreen(vehicleId: id, onBackToResults: () => context.go('/'));
         },
       ),
     ],

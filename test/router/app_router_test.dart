@@ -36,7 +36,7 @@ void main() {
       ProviderScope(
         overrides: [
           inventoryProvider.overrideWith(
-            (ref) => Future.value(const Inventory(vehicles: [], dealerName: 'Test Dealer')),
+            (ref) => Future.value(Inventory(vehicles: [vehicle(id: 42, make: 'Mazda')], dealerName: 'Test Dealer')),
           ),
         ],
         child: MaterialApp.router(routerConfig: router),
@@ -44,8 +44,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byType(VdpScreen), findsOneWidget);
-    expect(find.textContaining('42'), findsOneWidget);
+    final vdpScreen = tester.widget<VdpScreen>(find.byType(VdpScreen));
+    expect(vdpScreen.vehicleId, 42);
+    expect(find.textContaining('Mazda'), findsOneWidget);
   });
 
   testWidgets('restores srpStateProvider from the initial URL query parameters', (tester) async {
@@ -207,6 +208,56 @@ void main() {
     expect(find.byType(VdpScreen), findsOneWidget);
     expect(find.textContaining('7'), findsOneWidget);
   });
+
+  testWidgets(
+    "tapping a not-found VDP's back link navigates back to the SRP",
+    (tester) async {
+      final router = buildAppRouter(initialLocation: '/vehicle/999');
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            inventoryProvider.overrideWith(
+              (ref) => Future.value(Inventory(vehicles: [vehicle(id: 1)], dealerName: 'Test Dealer')),
+            ),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Vehicle not found.'), findsOneWidget);
+
+      await tester.tap(find.text('Back to search results'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SrpScreen), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    "tapping a loaded VDP's back link navigates back to the SRP",
+    (tester) async {
+      final router = buildAppRouter(initialLocation: '/vehicle/1');
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            inventoryProvider.overrideWith(
+              (ref) => Future.value(Inventory(vehicles: [vehicle(id: 1)], dealerName: 'Test Dealer')),
+            ),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(VdpScreen), findsOneWidget);
+
+      await tester.tap(find.text('Back to search results'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SrpScreen), findsOneWidget);
+    },
+  );
 
   testWidgets(
     'a single filter change does one restore round trip, not a redundant second one for '

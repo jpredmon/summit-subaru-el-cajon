@@ -86,7 +86,7 @@ Status legend: `[ ]` not started, `[~]` in progress, `[x]` done.
   (chevron icons + tooltip) instead of text-label buttons — the text-label
   version overflowed at realistic widths; see LEARNING.md.
 
-- [ ] **12. VDP screen** — header, spec table, features (bounded to 10,
+- [x] **12. VDP screen** — header, spec table, features (bounded to 10,
   "Show all (N)"/"Show less", no section when empty), four states (loading/
   error/not-found/loaded) via local find-by-id on Task 5's cache, three-
   branch page title. **Test first:** one test per state, features boundary

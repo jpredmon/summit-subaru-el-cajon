@@ -292,6 +292,11 @@ class Vehicle {
   query parameters so state is shareable and survives refresh/back — same
   reasoning as the web app: this is what makes paging and filtering compose
   as one coherent feature rather than two independent ones.
+- **Page title (web target):** browser tab title is the live `dealerName`
+  (same fallback as elsewhere) — matches the web app's
+  `useDocumentTitle(dealerName)` on its SRP. Missed in the original SRP task
+  (Task 9); folded into Task 12 since that task builds the shared
+  page-title mechanism for VDP anyway.
 
 ## VDP — scope
 
@@ -310,12 +315,19 @@ class Vehicle {
   miss since the web spec's text only discussed the 10-item boundary.
 - Reads from the same `InventoryRepository` cache the SRP populated — a
   local find-by-`id`, never a second fetch.
+- **Description:** shown below Features when `description` is non-empty
+  (omitted entirely when empty) — matches the web app's supplementary-text
+  block; not itself called out in the original VDP scope bullets but implied
+  by `Vehicle.description`'s own "VDP supplementary text only" contract and
+  the full-parity scope decision.
 - **Four distinct states:** loading, error (same message as SRP), not-found
   (loaded but no cached vehicle matches the id — e.g. a stale link — shows a
   message and a link back to SRP), and loaded. Page-title logic (web-target
   browser tab title) has three distinct branches matching these states —
   loaded, not-found, loading each get their own title text, not just the
-  loaded case.
+  loaded case. Error state's title falls through to the same plain-
+  `dealerName` text as loading (matches the web app's `getVdpTitle`: only
+  three branches are named because error and loading share one).
 
 ## Design polish — Flutter-idiomatic parity, not a port
 

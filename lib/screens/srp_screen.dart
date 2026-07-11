@@ -9,6 +9,7 @@ import '../models/vehicle.dart';
 import '../providers/inventory_provider.dart';
 import '../providers/srp_state_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/document_title.dart';
 import '../utils/format.dart';
 import '../widgets/vehicle_card.dart';
 
@@ -26,6 +27,7 @@ class SrpScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final inventoryAsync = ref.watch(inventoryProvider);
+    setDocumentTitle(ref.watch(dealerNameProvider));
 
     return Scaffold(
       body: inventoryAsync.when(

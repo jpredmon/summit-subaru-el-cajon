@@ -385,3 +385,48 @@ recording as a set, not just individually:
   as intended. Giving the `VehiclePhoto` itself an index-based
   `key: ValueKey(_index)` in the carousel restores true per-index
   independence regardless of URL duplication.
+
+## 2026-07-11 — Task 12: VDP screen
+
+- **Conditional imports pick the platform-specific file at compile time, not
+  runtime.** `import 'document_title_stub.dart' if (dart.library.html)
+  'document_title_web.dart' as impl;` is Dart's built-in mechanism for "use
+  this file on web, this other file everywhere else" — the condition
+  (`dart.library.html`) is evaluated per compile target, so a native build
+  never even sees `document_title_web.dart`'s contents and can't fail to
+  compile a web-only import. This is different from a runtime `if (kIsWeb)`
+  check, which would still need the web-only import physically present in
+  that file for every target.
+- **`dart:html` is soft-deprecated; `package:web` + `dart:js_interop` is the
+  current idiomatic replacement.** `flutter analyze` flagged `dart:html`
+  with two lints (`deprecated_member_use`, `avoid_web_libraries_in_flutter`)
+  even though it still compiled and worked. Switching the web-only file to
+  `import 'package:web/web.dart' as web; web.document.title = title;`
+  cleared both — `package:web` is also the WASM-compatible path forward,
+  which `dart:html` explicitly is not.
+- **`flutter_riverpod`'s public barrel file doesn't export everything its
+  own public API's types reference.** `ProviderScope.overrides` is typed
+  `List<Override>`, but `flutter_riverpod.dart` re-exports `riverpod`'s
+  internals through an explicit `show` clause that omits `Override` by
+  name — so `import 'package:flutter_riverpod/flutter_riverpod.dart';
+  List<Override> x = [];` fails to compile with "'Override' isn't a type,"
+  even though the class exists and the field it types is public. The fix
+  isn't importing it from elsewhere; it's not needing the name at all —
+  every existing test in this codebase constructs `ProviderScope(overrides:
+  [...], child: ...)` inline instead of declaring a helper with an explicit
+  `List<Override>` parameter, sidestepping the gap entirely.
+- **`AsyncValue.isLoading`/`.hasValue`/`.value` describe the three
+  `FutureProvider` states without needing a manual state machine.** VDP's
+  page-title logic needed to know, from one `AsyncValue<Inventory>`,
+  whether the fetch is still in flight, has ever produced data, and (if so)
+  what that data was — `isLoading`, `hasValue`, and `.value` cover exactly
+  that, matching `AsyncValue.when`'s loading/error/data branches without
+  re-deriving the same information a second way.
+- **Dart's records (`(String, Widget)`) are a lightweight positional tuple,
+  useful for "just needs to travel together, not be looked up by key."** A
+  `Map<String, Widget>` built only to be immediately `.entries.map()`'d in
+  insertion order was buying key-lookup machinery nothing in the code
+  actually used; a `List<(String, Widget)>` destructured as `final (label,
+  value) = entry;` in the `.map()` callback does the same job with one
+  fewer concept and no risk of a duplicate key silently overwriting an
+  entry.

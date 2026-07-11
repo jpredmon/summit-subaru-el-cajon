@@ -14,6 +14,11 @@ Vehicle vehicle({
   int mileage = 45231,
   double? price = 20000,
   List<String> photos = const [],
+  List<String> features = const ['Bluetooth'],
+  String description = 'Clean car.',
+  bool isCertified = false,
+  double? mpgCity = 25,
+  double? mpgHwy = 32,
 }) {
   return Vehicle(
     id: id,
@@ -31,12 +36,12 @@ Vehicle vehicle({
     interiorColor: 'Gray',
     mileage: mileage,
     price: price,
-    isCertified: false,
-    mpgCity: 25,
-    mpgHwy: 32,
+    isCertified: isCertified,
+    mpgCity: mpgCity,
+    mpgHwy: mpgHwy,
     photos: photos,
-    features: const ['Bluetooth'],
-    description: 'Clean car.',
+    features: features,
+    description: description,
     isNew: false,
   );
 }
