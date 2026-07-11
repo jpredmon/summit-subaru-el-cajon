@@ -59,11 +59,15 @@ Status legend: `[ ]` not started, `[~]` in progress, `[x]` done.
   (Task 9) and VDP carousel (Task 11); placeholder on empty list and on
   `Image.network` `errorBuilder`. **Test first:** widget test, both cases.
 
-- [ ] **9. SRP screen** — card grid (photo/placeholder, year/make/model/
+- [x] **9. SRP screen** — card grid (photo/placeholder, year/make/model/
   trim, mileage, price/"Call for price", body style), tap-through stub,
   wired to Tasks 5–7; loading/error states; "Clear filters" on empty
   filtered results. **Test first:** card field rendering, "Call for price"
-  branch, empty-filtered + Clear-filters flow.
+  branch, empty-filtered + Clear-filters flow. Scope note (discussed and
+  approved before starting): also built the filter dropdowns (make/body/
+  price) and pagination controls now, backed by local Riverpod state
+  (`srpStateProvider`) — Task 10 swaps that state's persistence to
+  `go_router` query params without changing the controls themselves.
 
 - [ ] **10. Routing (`go_router`) + URL query-param sync** — SRP at `/`
   with filter/page state in query params; VDP route `/vehicle/:id` stub.

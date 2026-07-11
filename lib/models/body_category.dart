@@ -13,3 +13,18 @@ enum BodyCategory {
   convertible,
   other,
 }
+
+/// Human-readable label for each category — matches the web app's
+/// `BodyCategory` string union exactly (`'SUV'` all-caps, others capitalized).
+extension BodyCategoryDisplay on BodyCategory {
+  String get displayName => switch (this) {
+        BodyCategory.sedan => 'Sedan',
+        BodyCategory.suv => 'SUV',
+        BodyCategory.truck => 'Truck',
+        BodyCategory.coupe => 'Coupe',
+        BodyCategory.van => 'Van',
+        BodyCategory.hatchback => 'Hatchback',
+        BodyCategory.convertible => 'Convertible',
+        BodyCategory.other => 'Other',
+      };
+}

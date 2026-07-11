@@ -184,3 +184,44 @@ during this build. Appended to, never overwritten.
   URL to a working one but stayed stuck on the placeholder), not by
   inspection — a reminder that "should work by reasoning about the docs"
   and "does work" are different claims for stateful widget internals.
+
+## 2026-07-10 — Task 9: SRP screen
+
+- **`Notifier`/`NotifierProvider` (mutable state) vs. `Provider`/
+  `FutureProvider` (read-only/derived).** Every provider through Task 8 just
+  computed a value from other providers. The SRP filter/page state is the
+  first thing in this app a *user action* changes, so it needs a provider
+  backed by a class with methods that reassign `state` — `Notifier<T>`
+  (override `build()` to supply the initial value, call `state = ...` in
+  methods to update it) paired with `NotifierProvider<MyNotifier, T>`. Riverpod
+  rebuilds every widget watching that provider whenever `state` is reassigned.
+- **`Override` isn't part of Riverpod 3.x's public API.** Tried to write a
+  test helper typed `List<Override>` for provider overrides and it didn't
+  compile — `riverpod.dart`'s barrel file exports a curated `show` list that
+  leaves `Override` out, even though the class exists internally. The fix
+  already used everywhere else in this codebase is the right one: never name
+  the type, just pass an inline list literal straight to `ProviderScope`/
+  `ProviderContainer`'s `overrides:` parameter and let Dart infer it from
+  context.
+- **`GridView.builder` only builds *visible* children.** A widget test
+  asserting `findsNWidgets(12)` on a 12-item grid failed with "Found 3" —
+  not a bug, just `GridView.builder`'s whole reason for existing (it doesn't
+  build/lay out off-screen items, for real-world scroll performance). The
+  fix is testing *which* items are present (e.g. does vehicle 12 show up
+  after paging, does vehicle 0 disappear) rather than raw on-screen counts,
+  which sidesteps viewport size entirely instead of fighting it.
+- **Re-pumping the same widget shape with a new `ProviderScope` mid-test
+  doesn't reliably swap state.** Calling `tester.pumpWidget()` twice in one
+  test, each with a different `inventoryProvider` override, kept showing the
+  *first* pump's data after the second — Flutter/Riverpod treat the second
+  call as an update of the existing element tree rather than a fresh mount,
+  and the already-resolved `FutureProvider` value doesn't reliably get
+  invalidated by a new override arriving via widget update. Splitting into
+  two independent `testWidgets` blocks (one `pumpWidget` each) sidestepped
+  the ambiguity entirely, and is arguably the more correct test shape anyway
+  (one behavior per test, per the project's TDD convention).
+- **Testing a `DropdownButton` interaction.** Tap the button by `Key` to
+  open its overlay menu, `pumpAndSettle()`, then tap the option's `Text` (use
+  `.last` — the closed button's current-selection label can also match the
+  same text), `pumpAndSettle()` again. No special Riverpod- or
+  Flutter-version-specific handling needed beyond that sequence.
