@@ -100,9 +100,24 @@ class _SrpBodyState extends ConsumerState<_SrpBody> {
                 : GridView.builder(
                     gridDelegate: _srpGridDelegate,
                     itemCount: paged.items.length,
+                    // A `key:` on the built VehicleCard alone is not enough --
+                    // SliverChildBuilderDelegate.findIndexByKey (what
+                    // GridView.builder uses to detect a keyed child's new
+                    // position) returns null and falls back to positional
+                    // reconciliation unless findChildIndexCallback is also
+                    // supplied. Without this, a filter/page change that drops
+                    // a vehicle from view can silently carry VehicleCard's
+                    // focus-highlight State over to a different vehicle now
+                    // occupying the same grid slot.
+                    findChildIndexCallback: (key) {
+                      final id = (key as ValueKey<int>).value;
+                      final index = paged.items.indexWhere((v) => v.id == id);
+                      return index == -1 ? null : index;
+                    },
                     itemBuilder: (context, index) {
                       final vehicle = paged.items[index];
                       return VehicleCard(
+                        key: ValueKey(vehicle.id),
                         vehicle: vehicle,
                         onTap: () => widget.onVehicleTap?.call(vehicle),
                       );

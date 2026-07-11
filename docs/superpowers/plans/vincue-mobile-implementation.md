@@ -140,7 +140,7 @@ Status legend: `[ ]` not started, `[~]` in progress, `[x]` done.
   routed child that throws during build renders the fallback, and a sibling
   chrome control (theme toggle) outside the boundary is still present/tappable.
 
-- [ ] **14c. Accessibility & reduced motion** — focus-highlight decoration
+- [x] **14c. Accessibility & reduced motion** — focus-highlight decoration
   matching actual corner radius (`FocusableActionDetector` + themed decoration,
   SPEC lines 349–351); `MediaQuery.disableAnimations` applied to every existing
   animation — the `VehicleCard` `InkWell` ripple/hover **and** Task 14a's

@@ -179,6 +179,58 @@ void main() {
     expect(find.byType(VehicleCard), findsOneWidget);
   });
 
+  testWidgets(
+    'a filter change that drops a vehicle from view does not carry its VehicleCard state over '
+    'to a different vehicle now occupying the same grid slot -- VehicleCard is Stateful '
+    '(focus-highlight state, Task 14c) and GridView.builder reconciles by list position unless '
+    'each item carries a stable identity key',
+    (tester) async {
+      final inventory = Inventory(
+        vehicles: [
+          vehicle(id: 1, make: 'Honda'),
+          vehicle(id: 2, make: 'Toyota'),
+        ],
+        dealerName: 'Test Dealer',
+      );
+      await tester.pumpWidget(
+        _wrap(
+          ProviderScope(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              inventoryProvider.overrideWith((ref) => Future.value(inventory)),
+            ],
+            child: const SrpScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      Finder cardFor(int id) => find.byWidgetPredicate((w) => w is VehicleCard && w.vehicle.id == id);
+      final hondaElementBefore = tester.element(cardFor(1));
+      final toyotaElementBefore = tester.element(cardFor(2));
+
+      await tester.tap(find.byKey(const Key('make-filter')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Toyota').last);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(VehicleCard), findsOneWidget);
+      final toyotaElementAfter = tester.element(find.byType(VehicleCard));
+
+      expect(
+        identical(toyotaElementAfter, toyotaElementBefore),
+        isTrue,
+        reason: "Toyota's own card should keep its identity/state across the filter change",
+      );
+      expect(
+        identical(toyotaElementAfter, hondaElementBefore),
+        isFalse,
+        reason: 'Toyota\'s card at the now-first grid slot must not be Honda\'s old Element/State '
+            'reused by position -- that would carry Honda\'s focus-highlight state onto Toyota',
+      );
+    },
+  );
+
   testWidgets('hides pagination controls when everything fits on one page (12 vehicles)', (tester) async {
     final twelve = Inventory(
       vehicles: List.generate(12, (i) => vehicle(id: i, make: 'Make$i')),

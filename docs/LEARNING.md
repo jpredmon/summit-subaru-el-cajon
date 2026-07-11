@@ -584,3 +584,96 @@ recording as a set, not just individually:
   regressed back to the broken `MaterialApp.router(builder: ...)` approach.
   Closing that gap needed a second test built on the actual
   `buildAppRouter()` output.
+
+## 2026-07-11 — Task 14c: Accessibility & reduced motion
+
+- **`FocusableActionDetector` vs. `InkWell`'s own built-in focus.**
+  `InkWell` is already focusable and already activates on Enter/Space, so
+  layering a second focus-managing widget outside it (for a themed focus-ring
+  decoration matching the actual corner radius, since Flutter doesn't need
+  the web app's CSS-outline-can't-follow-border-radius workaround) risks
+  creating *two* tab stops for one card — one on the outer detector, one on
+  the inner InkWell. Fix: give the outer `FocusableActionDetector` the real
+  `FocusNode`, and the inner `InkWell` `canRequestFocus: false` so it keeps
+  handling pointer taps/ripple but drops out of keyboard traversal entirely.
+  Taking focus away from `InkWell` also takes its default Enter/Space
+  handling with it, so that needed re-wiring explicitly via
+  `actions: {ActivateIntent: CallbackAction(...)}`.
+- **`onShowFocusHighlight` needs `FocusHighlightMode.traditional` to fire
+  true, and the test harness defaults to touch-mode.** `FocusableActionDetector`
+  only reports the highlight as "shown" when `FocusManager`'s highlight mode
+  is keyboard-style (`traditional`), which it infers from recent input
+  history — in a widget test, with no real keyboard/pointer events, that
+  history defaults to `touch`. `focusNode.requestFocus()` alone doesn't
+  change that. The test has to force it:
+  `FocusManager.instance.highlightStrategy = FocusHighlightStrategy.alwaysTraditional`
+  (and restore it in `addTearDown`, since it's a process-wide static like
+  `ErrorWidget.builder` was in Task 14b).
+- **`NoSplash.splashFactory` is the direct way to respect
+  `MediaQuery.disableAnimations` for an `InkWell`'s ripple** — it swaps the
+  animated spreading splash for an instant static one. There's no
+  app-wide/theme-level "disable all ink animations" switch; each `InkWell`
+  needs its `splashFactory` set conditionally.
+- **A `didChangeDependencies` re-check, not just `initState`, is what makes
+  `disableAnimations` gating live-reactive.** `SkeletonPulse`'s
+  `AnimationController` used to always `..repeat()` from its field
+  initializer; gating that decision in `didChangeDependencies` instead means
+  toggling the OS/browser's reduced-motion setting while a skeleton is
+  already on screen stops (or restarts) the pulse immediately, not just on
+  next mount.
+- **SPEC deviation, noted rather than silently absorbed:** SPEC's reduced-
+  motion bullet mentions gating "carousel photo transition," but `PhotoCarousel`
+  never got an animated transition in this build — advancing photos swaps
+  the `Image` instantly (confirmed: no `Animation`/`Transition`/`Tween` in
+  `photo_carousel.dart` or `vehicle_photo.dart`). There's nothing to gate;
+  SPEC's wording assumed a transition that was never added. Everything else
+  the bullet lists (skeleton pulse, card ripple/hover) is gated.
+- **Keyboard/focus-traversal order is a documented manual checklist, not an
+  automated test** (`docs/manual-checklists.md`) — Flutter's widget-test
+  harness can drive individual focus/keyboard interactions (as the tests
+  above do) but doesn't simulate real Tab-key sequencing across a full
+  running app well enough to assert the whole filters→cards→pagination→
+  VDP→carousel→back path in one automated pass.
+
+### Two review-caught bugs, both confirmed against the Flutter SDK source directly
+
+Both of these were flagged by the required per-task review, verified against
+`/c/dev/flutter/packages/flutter/lib/src/...` (this machine's actual SDK,
+3.44.6) rather than taken on trust, and fixed before the task was closed out
+— worth logging because both are non-obvious enough to recur.
+
+- **Flutter Web's Enter key fires a different Intent than every other
+  platform.** `WidgetsApp._defaultWebShortcuts` (`widgets/app.dart`) maps
+  Enter to `ButtonActivateIntent`, not `ActivateIntent` — "on the web, enter
+  activates buttons, but not other controls" is the SDK's own comment for
+  it. `InkWell` handles both (`ink_well.dart`'s `_actionMap` binds both to
+  the same callback) as long as it still owns focus, but once `VehicleCard`
+  moved focus to the outer `FocusableActionDetector` (`canRequestFocus:
+  false` on InkWell), only whatever intents *that* widget's `actions` map
+  binds are reachable — `Actions.invoke` searches upward from the currently
+  focused node, and InkWell's own binding sits *below* the now-focused node,
+  so it's structurally unreachable regardless of what it handles. Registering
+  only `ActivateIntent` meant Enter worked in every test (`flutter test`
+  always runs with `kIsWeb == false`, so it never exercises
+  `_defaultWebShortcuts`) but would have silently done nothing on the actual
+  deployed web build. Fix: bind both intents to the same callback. Because
+  `kIsWeb` is a compile-time constant, no widget test can toggle it — the
+  only way to test the fix is to invoke `ButtonActivateIntent` directly via
+  `Actions.maybeInvoke` and check the side effect, not the return value
+  (`CallbackAction.onInvoke` returning `null` by convention makes the return
+  value useless as a "was it handled" signal either way).
+- **A `key:` on a `GridView.builder`/`ListView.builder` item does nothing by
+  itself.** Converting `VehicleCard` to a `StatefulWidget` (for the Task 14c
+  focus-highlight state) meant a filter/page change that reindexes the
+  vehicle list could silently carry one vehicle's focus state onto a
+  different vehicle now occupying the same grid slot — Flutter's
+  `SliverChildBuilderDelegate` reconciles builder-based children by
+  *position*, not identity, by default. Adding `key: ValueKey(vehicle.id)`
+  to the built `VehicleCard` looked like the fix but changed nothing: per
+  `scroll_delegate.dart`, `SliverChildBuilderDelegate.findIndexByKey` returns
+  `null` — deliberately disabling key-based reconciliation — unless a
+  `findChildIndexCallback` is *also* supplied to map a key back to its
+  current index. A regression test proving this (comparing `Element`
+  identity before/after a filter change via `tester.element(...)`, not just
+  checking rendered output) failed even with the key in place, which is what
+  surfaced the missing callback. Both pieces are required together.

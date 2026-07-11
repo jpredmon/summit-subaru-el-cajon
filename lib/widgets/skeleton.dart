@@ -31,12 +31,13 @@ class SkeletonBox extends StatelessWidget {
 
 /// Wraps a subtree of [SkeletonBox]es in a single subtle opacity pulse, driven
 /// by one repeating controller for the whole group (not one ticker per box).
-/// The pulse runs unconditionally here — Task 14c gates it on
-/// `MediaQuery.disableAnimations`.
+/// The pulse is skipped when `MediaQuery.disableAnimations` is set (SPEC
+/// "Reduced motion") — the skeleton renders fully opaque and static instead.
 ///
-/// NOTE: the pulse repeats forever, so a widget test must not call
-/// `pumpAndSettle()` while a loading skeleton is on screen — it will time out.
-/// Use `pump()` (optionally with a fixed duration) to assert on loading states.
+/// NOTE: when animating, the pulse repeats forever, so a widget test must not
+/// call `pumpAndSettle()` while a loading skeleton is on screen — it will
+/// time out. Use `pump()` (optionally with a fixed duration) to assert on
+/// loading states.
 class SkeletonPulse extends StatefulWidget {
   const SkeletonPulse({super.key, required this.child});
 
@@ -50,11 +51,22 @@ class _SkeletonPulseState extends State<SkeletonPulse> with SingleTickerProvider
   late final AnimationController _controller = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 900),
-  )..repeat(reverse: true);
+  );
 
   late final Animation<double> _opacity = Tween<double>(begin: 0.4, end: 1).animate(
     CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
   );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _controller.stop();
+      _controller.value = 1;
+    } else if (!_controller.isAnimating) {
+      _controller.repeat(reverse: true);
+    }
+  }
 
   @override
   void dispose() {
