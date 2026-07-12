@@ -296,6 +296,14 @@ class _FilterBarState extends State<_FilterBar> {
     final body = _buildBodyDropdown(context);
     final minPrice = _buildMinPriceDropdown(context);
     final maxPrice = _buildMaxPriceDropdown(context);
+    final hasActiveFilters = widget.filters.make != null ||
+        widget.filters.body != null ||
+        widget.filters.minPrice != null ||
+        widget.filters.maxPrice != null;
+    final clearFiltersButton = TextButton(
+      onPressed: widget.notifier.clearFilters,
+      child: const Text('Clear filters'),
+    );
 
     switch (windowSizeClass) {
       case WindowSizeClass.expanded:
@@ -306,20 +314,29 @@ class _FilterBarState extends State<_FilterBar> {
         // _dropdownContentWidth above) -- and only drops the next one to a
         // new line once it genuinely doesn't fit. The exact grouping
         // therefore depends on real content widths, not the viewport's
-        // window-size-class alone.
+        // window-size-class alone. Clear filters is just another Wrap
+        // child, so it reflows along with the dropdowns rather than being
+        // pinned to a fixed position.
         return Wrap(
           spacing: 12,
           runSpacing: 12,
-          children: [make, body, minPrice, maxPrice],
+          children: [make, body, minPrice, maxPrice, if (hasActiveFilters) clearFiltersButton],
         );
       case WindowSizeClass.compact:
         if (!_compactFiltersOpen) {
           return Align(
             alignment: Alignment.centerLeft,
-            child: TextButton(
-              key: const Key('apply-filters-toggle'),
-              onPressed: () => setState(() => _compactFiltersOpen = true),
-              child: const Text('Apply filters'),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                TextButton(
+                  key: const Key('apply-filters-toggle'),
+                  onPressed: () => setState(() => _compactFiltersOpen = true),
+                  child: const Text('Apply filters'),
+                ),
+                if (hasActiveFilters) clearFiltersButton,
+              ],
             ),
           );
         }
@@ -335,10 +352,17 @@ class _FilterBarState extends State<_FilterBar> {
             const SizedBox(height: 12),
             maxPrice,
             const SizedBox(height: 12),
-            TextButton(
-              key: const Key('apply-filters-toggle'),
-              onPressed: () => setState(() => _compactFiltersOpen = false),
-              child: const Text('Hide filters'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                TextButton(
+                  key: const Key('apply-filters-toggle'),
+                  onPressed: () => setState(() => _compactFiltersOpen = false),
+                  child: const Text('Hide filters'),
+                ),
+                if (hasActiveFilters) clearFiltersButton,
+              ],
             ),
           ],
         );

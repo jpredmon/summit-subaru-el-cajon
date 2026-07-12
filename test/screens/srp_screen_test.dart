@@ -231,7 +231,10 @@ void main() {
       expect(find.textContaining('No vehicles match these filters'), findsOneWidget);
       expect(find.byType(VehicleCard), findsNothing);
 
-      await tester.tap(find.text('Clear filters'));
+      // Both the empty-results panel and the filter bar itself now offer a
+      // Clear filters control (any filter active) -- either does the same
+      // thing, so disambiguate rather than assert on which one exists.
+      await tester.tap(find.text('Clear filters').first);
       await tester.pumpAndSettle();
 
       expect(find.byType(VehicleCard), findsNWidgets(2));
@@ -912,6 +915,85 @@ void main() {
       await tester.tap(find.byKey(const Key('apply-filters-toggle')));
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('make-filter')), findsNothing);
+    });
+  });
+
+  group('Clear filters button in the filter bar', () {
+    Future<BuildContext> pumpAt(WidgetTester tester, double width) async {
+      tester.view.physicalSize = Size(width, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      final inventory = Inventory(vehicles: [vehicle(id: 1)], dealerName: 'Test Dealer');
+      await tester.pumpWidget(
+        _wrap(
+          ProviderScope(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              inventoryProvider.overrideWith((ref) => Future.value(inventory)),
+            ],
+            child: const SrpScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return tester.element(find.byType(SrpScreen));
+    }
+
+    testWidgets('expanded (1400px): hidden with no active filters, shown once one is set, and clears on tap', (
+      tester,
+    ) async {
+      final context = await pumpAt(tester, 1400);
+      expect(find.text('Clear filters'), findsNothing);
+
+      ProviderScope.containerOf(context).read(srpStateProvider.notifier).setMake('Honda');
+      await tester.pumpAndSettle();
+      expect(find.text('Clear filters'), findsOneWidget);
+
+      await tester.tap(find.text('Clear filters'));
+      await tester.pumpAndSettle();
+      expect(
+        ProviderScope.containerOf(context).read(srpStateProvider).filters,
+        const VehicleFilters(),
+      );
+      expect(find.text('Clear filters'), findsNothing);
+    });
+
+    testWidgets('compact (360px) collapsed: hidden with no active filters, shown alongside Apply filters once set', (
+      tester,
+    ) async {
+      final context = await pumpAt(tester, 360);
+      expect(find.byKey(const Key('apply-filters-toggle')), findsOneWidget);
+      expect(find.text('Clear filters'), findsNothing);
+
+      ProviderScope.containerOf(context).read(srpStateProvider.notifier).setMake('Honda');
+      await tester.pumpAndSettle();
+      // Both controls exist and sit in the same Wrap -- at this narrow
+      // width they don't necessarily share one line (Wrap drops to a
+      // second line rather than overflowing), so this only asserts
+      // presence, not exact row-sharing.
+      expect(find.byKey(const Key('apply-filters-toggle')), findsOneWidget);
+      expect(find.text('Clear filters'), findsOneWidget);
+    });
+
+    testWidgets('compact (360px) open: shown alongside Hide filters once a filter is set', (tester) async {
+      final context = await pumpAt(tester, 360);
+
+      await tester.tap(find.byKey(const Key('apply-filters-toggle')));
+      await tester.pumpAndSettle();
+      expect(find.text('Clear filters'), findsNothing);
+
+      ProviderScope.containerOf(context).read(srpStateProvider.notifier).setMake('Honda');
+      await tester.pumpAndSettle();
+      // Both controls exist in the same Wrap -- at this narrow width they
+      // don't necessarily share one line, so only presence is asserted.
+      expect(find.text('Hide filters'), findsOneWidget);
+      expect(find.text('Clear filters'), findsOneWidget);
+
+      await tester.tap(find.text('Clear filters'));
+      await tester.pumpAndSettle();
+      expect(find.text('Clear filters'), findsNothing);
+      // Clearing filters doesn't also close the panel -- still open.
+      expect(find.text('Hide filters'), findsOneWidget);
     });
   });
 }
