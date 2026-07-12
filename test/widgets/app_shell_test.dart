@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vincue_mobile/models/inventory.dart';
 import 'package:vincue_mobile/providers/inventory_provider.dart';
 import 'package:vincue_mobile/providers/theme_mode_provider.dart';
+import 'package:vincue_mobile/theme/breakpoints.dart';
 import 'package:vincue_mobile/widgets/app_shell.dart';
 import 'package:vincue_mobile/widgets/theme_toggle_button.dart';
 
@@ -85,5 +86,50 @@ void main() {
 
     expect(find.byType(Image), findsOneWidget);
     expect(find.bySemanticsLabel('Summit Subaru El Cajon'), findsOneWidget);
+  });
+
+  group('logoSizingFor', () {
+    test('compact width', () {
+      final sizing = logoSizingFor(WindowSizeClass.compact);
+      expect(sizing.logoHeight, 68);
+      expect(sizing.toolbarHeight, 104);
+    });
+
+    test('medium width', () {
+      final sizing = logoSizingFor(WindowSizeClass.medium);
+      expect(sizing.logoHeight, 80);
+      expect(sizing.toolbarHeight, 116);
+    });
+
+    test('expanded width', () {
+      final sizing = logoSizingFor(WindowSizeClass.expanded);
+      expect(sizing.logoHeight, 92);
+      expect(sizing.toolbarHeight, 128);
+    });
+  });
+
+  testWidgets('AppBar title is horizontally centered', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+
+    await tester.pumpWidget(_wrap(prefs, const Text('SRP content')));
+    await tester.pump();
+
+    final appBar = tester.widget<AppBar>(find.byType(AppBar));
+    expect(appBar.centerTitle, isTrue);
+  });
+
+  testWidgets('grows the logo/toolbar height at expanded width', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    tester.view.physicalSize = const Size(1000, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(_wrap(prefs, const Text('SRP content')));
+    await tester.pump();
+
+    final appBar = tester.widget<AppBar>(find.byType(AppBar));
+    expect(appBar.toolbarHeight, 128);
   });
 }
