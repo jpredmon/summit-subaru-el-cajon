@@ -88,18 +88,39 @@ which stopped the overflow but also means every dropdown always renders at
 exactly 300px (or whatever narrower width the `Wrap` line gives it), never
 its own true content width.
 
-**Fix:** `DropdownButton.selectedItemBuilder` -- a separate, lean widget
-Flutter renders for the *closed* state (just the current selection's text),
-completely decoupled from the full menu's widest item. Combined with
-`isExpanded: false`, each dropdown's width tracks its actual selected text
-instead of the widest possible option. A small per-field max width (reusing
-Task 30's own measurements -- make ~234px, body style ~266px, both price
-dropdowns ~169px -- as an upper bound, not a forced width) still guards
-against a pathologically long value overflowing; `TextOverflow.ellipsis`
-(already added in Task 30) remains the last-resort guard.
+**Fix (corrected after an empirical check during this same brainstorm --
+see below): direct text measurement, not `selectedItemBuilder`.**
+`DropdownButton.selectedItemBuilder` was the first idea, but a quick probe
+test proved it doesn't do what it sounds like it does: Flutter renders
+*every* `selectedItemBuilder` widget inside an `IndexedStack` (so it can
+keep each item's state alive), and `IndexedStack` sizes itself to the
+**largest** child among all of them, not just the one currently shown --
+measured directly (a 2-item probe, short value vs. a long value): both
+rendered at the exact same 621.5px width. So `selectedItemBuilder` reserves
+the widest-possible-item width just like the default mechanism does -- it
+would not have fixed anything.
 
-This is a new Flutter concept for this project (`selectedItemBuilder`) --
-gets a LEARNING.md entry.
+The mechanism that actually works: `isExpanded: true` never looks at other
+items' widths at all -- it just fills whatever width its parent gives it
+(this is exactly what Task 30 already relies on for the overflow fix, it
+was just handed a flat 300px parent width instead of a content-driven one).
+So: measure the *current* selection's rendered text width directly via
+`TextPainter`, add a small fixed chrome allowance for the dropdown's arrow
+icon + internal padding -- measured empirically at **24px** (a
+single-item `DropdownButton`'s rendered width minus its `Text` child's raw
+`TextPainter` width, confirmed via probe test) -- and wrap the
+`isExpanded: true` `DropdownButton` in a `SizedBox` sized to exactly that
+computed width. The per-field max widths (Task 30's own measurements --
+make ~234px, body style ~266px, both price dropdowns ~169px) still apply as
+a clamp ceiling (a pathologically long value doesn't blow past a sane
+bound), and `TextOverflow.ellipsis` (already added in Task 30) remains the
+last-resort guard for whatever text doesn't fit once clamped.
+
+This is a new Flutter concept for this project (`TextPainter`-based
+intrinsic-width measurement, and the `IndexedStack`-sizing gotcha behind
+*why* `selectedItemBuilder` doesn't do this for free) -- gets a
+LEARNING.md entry, including the wrong-turn as a useful lesson (measure
+framework behavior directly rather than trusting what an API name implies).
 
 ## Header logo visibility
 
