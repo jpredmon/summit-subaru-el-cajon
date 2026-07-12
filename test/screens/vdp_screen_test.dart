@@ -8,6 +8,7 @@ import 'package:vincue_mobile/models/inventory.dart';
 import 'package:vincue_mobile/providers/inventory_provider.dart';
 import 'package:vincue_mobile/providers/theme_mode_provider.dart';
 import 'package:vincue_mobile/screens/vdp_screen.dart';
+import 'package:vincue_mobile/widgets/photo_carousel.dart';
 import 'package:vincue_mobile/widgets/skeleton.dart';
 
 import '../support/vehicle_factory.dart';
@@ -310,9 +311,16 @@ void main() {
     );
   });
 
-  group('two-pane layout', () {
-    testWidgets('expanded width: renders the two-pane Row layout', (tester) async {
-      tester.view.physicalSize = const Size(1000, 800);
+  group('single-pane layout at every width', () {
+    // Reverses Tasks 17-19's expanded-width two-pane VDP layout (approved
+    // 2026-07-11, docs/superpowers/specs/2026-07-11-responsive-layout-design.md):
+    // JP reviewed the running app and found the side-by-side result read
+    // worse than a wide single column -- the reference web app (docs/context
+    // screenshot) never had a two-pane VDP at all, just one centered column
+    // at any width. Photo/carousel must always render above the details,
+    // never beside them, regardless of viewport width.
+    testWidgets('expanded width: photo stays above details, no side-by-side Row', (tester) async {
+      tester.view.physicalSize = const Size(1400, 800);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
 
@@ -330,18 +338,14 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('vdp-two-pane-row')), findsOneWidget);
-      // Two-pane content is centered (web-parity: mx-auto), not left-aligned.
-      expect(
-        find.ancestor(
-          of: find.byKey(const Key('vdp-two-pane-row')),
-          matching: find.byType(Center),
-        ),
-        findsOneWidget,
-      );
+      expect(find.byKey(const Key('vdp-two-pane-row')), findsNothing);
+
+      final photoTop = tester.getTopLeft(find.byType(PhotoCarousel)).dy;
+      final detailsTop = tester.getTopLeft(find.text('Engine')).dy;
+      expect(photoTop, lessThan(detailsTop));
     });
 
-    testWidgets('sub-expanded (medium) width: does not render the two-pane Row layout', (tester) async {
+    testWidgets('medium width: photo stays above details, no side-by-side Row', (tester) async {
       tester.view.physicalSize = const Size(700, 800);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);

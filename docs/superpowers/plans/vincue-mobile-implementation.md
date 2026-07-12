@@ -758,3 +758,61 @@ paging/URL-sync work, VDP reachable with all four states correct.
   activate, not verified to look good at every possible length).
   `above-and-beyond-candidates.md`'s G3 entry updated to mark this
   fixed too.
+
+- [x] **32. Revert VDP two-pane layout (Tasks 17-19) to always single-pane** —
+  JP reviewed the running app at wide desktop widths and found the
+  side-by-side (photo left / details right) layout added by Tasks 17-19
+  read worse than a wide single column; the reference web app never had a
+  two-pane VDP at all (confirmed via a screenshot of the old app — one
+  centered column at any width). `lib/screens/vdp_screen.dart`'s
+  `windowSizeClass`-branch removed entirely; always renders the existing
+  single-pane `ConstrainedBox(maxWidth: 800)` column, still horizontally
+  centered (a review catch: removing the branch also silently dropped the
+  `Center` wrapper, leaving content pinned to the left edge on wide
+  screens — fixed by centering unconditionally, which is a no-op at
+  narrow widths). **Test first:** `test/screens/vdp_screen_test.dart`'s
+  `two-pane layout` group replaced with `single-pane layout at every
+  width` — RED confirmed against the un-reverted code (found the
+  `vdp-two-pane-row` key present at 1400px), then GREEN after the revert;
+  asserts the photo renders above the details (not just "no Row"). Full
+  suite (259 tests) + `flutter analyze` clean. **Also fixed in the same
+  pass (unrelated, JP's own request):** light theme's `ColorScheme.primary`
+  (`lib/theme/app_theme.dart`) changed from `0xFFB45309` to `0xFF9E1A1C` to
+  match the header logo's "SUMMIT SUBARU" ribbon exactly (measured via
+  pixel scan, RGB(158,26,28) dominant across 35,199 sampled pixels) —
+  propagates automatically to Previous/Next, card prices, and Show all/less
+  since they all read `theme.colorScheme.primary` rather than a duplicated
+  literal.
+  **Confidence: 93/100.** Medium-effort 8-angle review surfaced one real
+  regression (lost centering, fixed above) plus minor/stale-comment nits
+  (a doc comment in `_VdpSkeleton` referencing the now-removed two-pane
+  layout, fixed; a vacuous `vdp-two-pane-row` key assertion in the new test,
+  left as-is — harmless, the photo-above-details ordering check does the
+  real work) — accepted without further iteration given session time
+  constraints. Dark-mode's `ColorScheme.primary`/`primaryContainer` staying
+  on the old amber seed is a pre-existing condition (dark mode has been
+  force-disabled since Task 24), not something this diff introduced or
+  needs to address.
+
+- [ ] **31. Filter dropdowns stack one-per-row on real compact-width phones**
+  — real bug, found during the first real-Android-device pass (Pixel 2,
+  physical hardware, not an emulator/browser resize). Root cause
+  (confirmed by reading `_FilterBar`, `lib/screens/srp_screen.dart:282,
+  296,322,346,367`, not yet reproduced via a failing test): each
+  dropdown's `ConstrainedBox(maxWidth: 300)` has no matching `minWidth`,
+  and `isExpanded: true` makes a `DropdownButton` fill whatever width its
+  parent gives it — inside `Wrap`'s loose per-child constraints, that
+  means every dropdown always renders at the full 300px cap regardless of
+  actual content width (make ~234px, body style ~266px, price ~169px each
+  per Task 30's own measurements). Two 300px boxes + 12px spacing (612px)
+  don't fit on a Pixel 2's ~360-390dp usable width, so `Wrap` stacks all
+  four vertically — wasting vertical space where two (e.g. make + a price
+  dropdown) could fit per row. The 300px cap was sized to stop dropdowns
+  from filling an entire *wide* screen (Task 30's problem), not tuned for
+  narrow/compact phone widths — the two goals are in tension with a single
+  fixed cap. Needs its own systematic-debugging + design pass (likely a
+  width that scales with available space instead of a flat 300px, or a
+  `compact`-size-class-specific max width per `windowSizeClassOf`,
+  `lib/theme/breakpoints.dart`) before a fix is attempted. **Deliberately
+  deferred** (JP's call, given session time/battery constraints during the
+  device pass) — not started, no test written yet.

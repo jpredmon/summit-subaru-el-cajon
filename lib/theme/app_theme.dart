@@ -32,7 +32,10 @@ class AppTheme {
         ColorScheme.fromSeed(
           seedColor: const Color(0xFFF59E0B),
           brightness: Brightness.light,
-        ).copyWith(primary: const Color(0xFFB45309)),
+          // Matches the "SUMMIT SUBARU" ribbon in the header logo exactly
+          // (measured via pixel scan of assets/images/summit_subaru_logo.png:
+          // RGB(158,26,28), dominant across 35,199 sampled ribbon pixels).
+        ).copyWith(primary: const Color(0xFF9E1A1C)),
       );
 
   static ThemeData dark() => _base(

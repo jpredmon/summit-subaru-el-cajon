@@ -6,7 +6,6 @@ import '../models/vdp_page_title.dart';
 import '../models/vehicle.dart';
 import '../providers/inventory_provider.dart';
 import '../theme/app_theme.dart';
-import '../theme/breakpoints.dart';
 import '../utils/document_title.dart';
 import '../utils/format.dart';
 import '../widgets/inventory_error_view.dart';
@@ -58,10 +57,8 @@ class VdpScreen extends ConsumerWidget {
 }
 
 /// Loading placeholder for the VDP — a skeleton photo block above a stack of
-/// skeleton spec rows, matching the loaded layout's vertical shape.
-/// Intentionally single-column (maxWidth 800) even at expanded width rather
-/// than mirroring the two-pane loaded layout: loading is a brief transient and
-/// a single column collapses gracefully at any width.
+/// skeleton spec rows, matching the loaded layout's single-column shape
+/// (maxWidth 800) at every viewport width.
 class _VdpSkeleton extends StatelessWidget {
   const _VdpSkeleton();
 
@@ -129,7 +126,6 @@ class _VdpBodyState extends State<_VdpBody> {
   @override
   Widget build(BuildContext context) {
     final vehicle = widget.vehicle;
-    final windowSizeClass = windowSizeClassOf(MediaQuery.sizeOf(context).width);
     final backButton = TextButton(
       onPressed: widget.onBackToResults,
       child: const Text('Back to search results'),
@@ -140,53 +136,29 @@ class _VdpBodyState extends State<_VdpBody> {
       onToggleFeatures: () => setState(() => _featuresExpanded = !_featuresExpanded),
     );
 
-    final Widget content;
-    if (windowSizeClass == WindowSizeClass.expanded) {
-      content = Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1200),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              backButton,
-              const SizedBox(height: 8),
-              Row(
-                key: const Key('vdp-two-pane-row'),
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(
-                    width: 440,
-                    child: PhotoCarousel(key: ValueKey(vehicle.id), photos: vehicle.photos),
-                  ),
-                  const SizedBox(width: 24),
-                  Expanded(child: details),
-                ],
-              ),
-            ],
-          ),
-        ),
-      );
-    } else {
-      content = ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 800),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            backButton,
-            const SizedBox(height: 8),
-            PhotoCarousel(key: ValueKey(vehicle.id), photos: vehicle.photos),
-            const SizedBox(height: 16),
-            details,
-          ],
-        ),
-      );
-    }
+    // Always single-pane, at every viewport width: photo/carousel full-width
+    // on top, details below. A side-by-side two-pane layout at expanded
+    // widths (Tasks 17-19) was tried and reverted -- reviewed on a real
+    // wide browser window and judged worse than a wide single column, and
+    // the reference web app never had a two-pane VDP either.
+    final content = ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 800),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          backButton,
+          const SizedBox(height: 8),
+          PhotoCarousel(key: ValueKey(vehicle.id), photos: vehicle.photos),
+          const SizedBox(height: 16),
+          details,
+        ],
+      ),
+    );
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
-      child: content,
+      child: Center(child: content),
     );
   }
 }
