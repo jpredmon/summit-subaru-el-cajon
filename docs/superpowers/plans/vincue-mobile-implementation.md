@@ -648,3 +648,59 @@ paging/URL-sync work, VDP reachable with all four states correct.
   package's internal, undocumented layout behavior) is a real, honestly-
   named risk accepted for this project's scope, not fixed. Full suite
   (255 tests) + `flutter analyze` clean after all fixes.
+
+- [x] **29. Pagination controls overflow (G3)** — real bug, not
+  above-and-beyond polish: `above-and-beyond-candidates.md`'s G3 entry,
+  reproduced again live while JP tested Task 28's grid fix at narrow
+  widths. Root-caused via `systematic-debugging` before any fix attempt
+  (not guessed): `_PaginationControls`' `Row` (Previous / "Page N of M" /
+  Next) has three non-flexible children whose combined natural width
+  (measured directly via `tester.getSize`, ~400px) can't shrink to fit
+  narrow viewports — a `Row` never shrinks non-flex children, it just
+  overflows once their sum exceeds available space. Fix: replaced `Row`
+  with `Wrap` (`lib/screens/srp_screen.dart`), the same pattern
+  `_FilterBar` and `_EmptyResults` already use elsewhere in this file for
+  the identical class of problem. **A code review caught a real
+  regression the initial fix shipped:** `Wrap` shrink-wraps to its own
+  content width instead of filling its parent the way `Row`'s default
+  `mainAxisSize: MainAxisSize.max` did, so on any viewport wide enough
+  for the controls to fit on one line, they rendered flush-left instead
+  of centered — `WrapAlignment.center` alone only centers within `Wrap`'s
+  own already-shrunk box, a no-op when nothing has wrapped. Fixed by
+  wrapping in `Center`. **Test first (both the bug and the review's
+  catch):** `test/screens/srp_screen_test.dart` — a 320px-viewport
+  regression test for the overflow itself (chosen specifically to avoid
+  also triggering a separate, unrelated `DropdownButton` overflow found
+  during investigation — see below — and verified against the pre-fix
+  code: confirmed it fails with a 118px overflow on the old `Row`, passes
+  on the new `Wrap`), plus a second test asserting the controls'
+  horizontal center matches the page's actual content center at a wide
+  viewport (this one first confirmed RED against the `Center`-less
+  `Wrap`, at `x=218.975` instead of the expected `x=400`, before the fix).
+  Full suite (257 tests) + `flutter analyze` clean.
+  **Also found, not fixed, newly documented:** a second, previously
+  "not yet identified" overflow noted in the original G3 backlog entry
+  is a `DropdownButton` internals issue (Flutter's own code, not app
+  code) in `_FilterBar`, triggering below ~300px of available width —
+  confirmed independent of this bug (reproduces on the old pagination
+  code too), deliberately left out of scope for this task, now recorded
+  in `above-and-beyond-candidates.md`'s G3 entry instead of silently
+  dropped.
+  **Confidence: 90/100.** What was uncertain and how it was closed: my
+  first regression test used a 200px viewport (matching the original
+  bug report's spirit) but that width also triggered the unrelated
+  dropdown bug, conflating two defects in one test — caught by actually
+  running the test and reading its failure, not assumed; narrowed to
+  320px and verified that width still exercises the real fix (reverted
+  the source change via `git stash` and confirmed the old code fails
+  there too, rather than trusting a width picked by feel). The
+  centering regression itself was NOT something I found — an independent
+  code review caught it via direct empirical measurement of the rendered
+  widget tree; I verified the finding was real (reproduced the 218.975
+  vs 400 discrepancy myself) before fixing it, rather than accepting the
+  finding on faith. What could still fail downstream: the wrap-grouping
+  asymmetry the same review flagged (at exactly 320px, "Previous" lands
+  alone on its own line while "Page N of M"/"Next" share the second) is
+  a real but minor cosmetic quirk of `Wrap`'s greedy packing algorithm,
+  not fixed — accepted as a minor, honestly-named trade-off, same
+  treatment as Task 28's masonry row-alignment note.

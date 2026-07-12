@@ -156,12 +156,13 @@ provider type/cache behavior rather than real disk I/O in a widget test.
 
 **New concept:** `cached_network_image` / disk-backed `ImageProvider`.
 
-### G3. Pagination controls RenderFlex overflow at narrow widths
+### G3. Pagination controls RenderFlex overflow at narrow widths — DONE (Task 29, 2026-07-12)
 
 Found 2026-07-12 by JP testing on a real Samsung Galaxy S20 Ultra
-viewport (via the responsive header-logo work). Real, reproducible
-layout bug — not investigated or fixed yet, needs `systematic-debugging`
-before any fix attempt (root cause unconfirmed).
+viewport (via the responsive header-logo work), reproduced again the
+same day testing Task 28's grid fix. Root-caused via
+`systematic-debugging` (direct widget-size measurement, not assumed) and
+fixed in Task 29 — see `vincue-mobile-implementation.md`.
 
 Console evidence, verbatim:
 
@@ -185,14 +186,31 @@ Unexpected null value.
 A RenderFlex overflowed by 38 pixels on the right.
 ```
 
-That second, smaller 38px overflow is a separate `Row` somewhere else
-(not yet identified which one — possibly the filter bar or a card
-internal layout) also worth investigating in the same pass, not
-assumed to be the same root cause as the 85px one.
+That second, smaller 38px overflow is a separate `Row` somewhere else —
+**identified during Task 29's investigation (2026-07-12), NOT fixed**:
+one of `_FilterBar`'s `DropdownButton`s (`lib/screens/srp_screen.dart`,
+the Make/Body/Min price/Max price dropdowns), whose internal
+selected-item-plus-arrow `Row` (Flutter's own `DropdownButton`
+internals, not app code) overflows below roughly 300px of available
+content width. Confirmed independent of `_PaginationControls`'s bug —
+reproduces on the *old* `Row`-based pagination code too, and persists
+after Task 29's fix. Deliberately left unfixed as out of scope for
+Task 29 (a different widget, a different root cause, would need its own
+investigation into whether a narrower dropdown item label, a custom
+dropdown affordance, or something else is the right fix). **Not yet a
+numbered task** — pick up with its own `systematic-debugging` pass
+before designing a fix, same discipline as this entry got.
 
-**Not yet scoped as a task** — needs root-cause investigation
-(`systematic-debugging`) before a fix is designed. Likely direction:
-`_PaginationControls`' `Row` needs `Expanded`/flexible children or a
-`Wrap` instead of a fixed `Row` at narrow widths (matches the fix
-pattern Flutter's own overflow message suggests), but confirm the
-actual cause before assuming that's it.
+**Task 29's fix:** `_PaginationControls`' `Row` (Previous / page
+indicator / Next) had three non-flexible children whose combined
+natural width (measured ~400px) couldn't shrink to fit narrow
+viewports — a `Row` never shrinks non-flex children, it just overflows.
+Replaced with a `Wrap` (the same pattern `_FilterBar` and
+`_EmptyResults` already use elsewhere in this file for the same class
+of problem — this is the third such instance, worth watching for a
+fourth before extracting a shared helper), wrapped in `Center` since
+`Wrap` shrink-wraps to its content width instead of filling its parent
+the way `Row`'s default `mainAxisSize: MainAxisSize.max` did (a real
+regression caught by an independent code review, not shipped) — without
+`Center`, the controls would render flush-left instead of centered on
+any viewport wide enough for them to fit on one line.

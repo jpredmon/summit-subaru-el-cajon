@@ -364,21 +364,36 @@ class _PaginationControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        TextButton(
-          onPressed: currentPage > 1 ? () => onPageChange(currentPage - 1) : null,
-          child: const Text('Previous'),
-        ),
-        const SizedBox(width: 16),
-        Text('Page $currentPage of $totalPages', style: tabularNumsStyle(Theme.of(context).textTheme.bodyMedium!)),
-        const SizedBox(width: 16),
-        TextButton(
-          onPressed: currentPage < totalPages ? () => onPageChange(currentPage + 1) : null,
-          child: const Text('Next'),
-        ),
-      ],
+    // A Row's non-flexible children render at their own natural size
+    // regardless of available width -- two TextButtons (Material's minimum
+    // tap-target width) plus the page-count text together need ~400px
+    // (measured), more than many phone viewports leave after the page's
+    // 16px padding, which overflowed rather than adapting. Wrap -- the same
+    // pattern already used above by _FilterBar and _EmptyResults for the
+    // same class of problem -- drops to a second line at narrow widths
+    // instead. Unlike Row (mainAxisSize.max fills its parent, then centers
+    // within that), Wrap shrink-wraps to its own content width, so it must
+    // be explicitly centered within the page via the outer Center --
+    // WrapAlignment.center alone only centers content within Wrap's own
+    // already-shrunk box, which is a no-op when nothing has wrapped.
+    return Center(
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 16,
+        runSpacing: 8,
+        children: [
+          TextButton(
+            onPressed: currentPage > 1 ? () => onPageChange(currentPage - 1) : null,
+            child: const Text('Previous'),
+          ),
+          Text('Page $currentPage of $totalPages', style: tabularNumsStyle(Theme.of(context).textTheme.bodyMedium!)),
+          TextButton(
+            onPressed: currentPage < totalPages ? () => onPageChange(currentPage + 1) : null,
+            child: const Text('Next'),
+          ),
+        ],
+      ),
     );
   }
 }

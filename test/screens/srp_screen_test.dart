@@ -384,6 +384,81 @@ void main() {
     },
   );
 
+  testWidgets(
+    'pagination controls stay horizontally centered on the page when they fit on one line '
+    '-- a Wrap (unlike the Row it replaced) shrink-wraps to its content width instead of '
+    'filling its parent, so WrapAlignment.center alone only centers within that narrow '
+    "shrink-wrapped box, not within the page's actual content width",
+    (tester) async {
+      // 800px viewport (this file's default test surface) -- wide enough
+      // that Previous/"Page N of M"/Next fit on a single Wrap run, so this
+      // exercises the common case (not the narrow-width wrapping case the
+      // G3 test above covers).
+      final thirteen = Inventory(
+        vehicles: List.generate(13, (i) => vehicle(id: i, make: 'Make$i')),
+        dealerName: 'Test Dealer',
+      );
+      await tester.pumpWidget(
+        _wrap(
+          ProviderScope(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              inventoryProvider.overrideWith((ref) => Future.value(thirteen)),
+            ],
+            child: const SrpScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final paginationControls = find.ancestor(
+        of: find.widgetWithText(TextButton, 'Previous'),
+        matching: find.byType(Wrap),
+      );
+      final rect = tester.getRect(paginationControls);
+
+      // Page content spans the full 800px test surface minus 16px of
+      // Padding on each side (lib/screens/srp_screen.dart's outer
+      // Padding(all: 16)), so its horizontal center is at x=400.
+      expect(rect.center.dx, closeTo(400, 0.5));
+    },
+  );
+
+  testWidgets(
+    'pagination controls do not overflow at narrow viewport widths (G3) -- Previous/Next '
+    'buttons plus the page-count text have a combined natural width (measured ~400px) that '
+    'exceeds what many phone viewports leave available after the 16px page padding',
+    (tester) async {
+      // 320px -- confirmed the pre-fix Row overflowed by 118px here; narrow
+      // enough to reproduce G3 without also triggering an unrelated,
+      // pre-existing DropdownButton overflow that shows up below ~300px
+      // (the filter bar's own narrow-width bug, out of scope for this fix).
+      tester.view.physicalSize = const Size(320, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final thirteen = Inventory(
+        vehicles: List.generate(13, (i) => vehicle(id: i, make: 'Make$i')),
+        dealerName: 'Test Dealer',
+      );
+      await tester.pumpWidget(
+        _wrap(
+          ProviderScope(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              inventoryProvider.overrideWith((ref) => Future.value(thirteen)),
+            ],
+            child: const SrpScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Page 1 of 2'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('tapping a card invokes onVehicleTap with that vehicle', (tester) async {
     final tapped = <int>[];
     final inventory = Inventory(vehicles: [vehicle(id: 7)], dealerName: 'Test Dealer');

@@ -938,3 +938,32 @@ Both of these were flagged by the required per-task review, verified against
   deliberate, honest trade for "every card fits its own content exactly,
   every time" over "every card matches a predicted height most of the
   time."
+
+## 2026-07-12 — `Row` vs `Wrap` sizing (Task 29: pagination overflow, G3)
+
+- **`Row` and `Wrap` handle "how wide am I?" completely differently, and
+  swapping one for the other silently changes alignment, not just
+  wrapping behavior.** `Row`'s default `mainAxisSize` is `MainAxisSize
+  .max` — it fills all the width its parent gives it, then arranges
+  children (e.g. `mainAxisAlignment: center`) *within that full width*.
+  `Wrap` has no such "fill parent" mode at all — it always shrink-wraps
+  to the width its content actually needs (one run's worth, or the
+  widest run if it wraps to several). So swapping `Row(mainAxisAlignment
+  : center)` for `Wrap(alignment: WrapAlignment.center)` to fix an
+  overflow bug looks like a drop-in replacement but isn't: `WrapAlignment
+  .center` only centers content *within Wrap's own already-shrunk box*
+  — if that box is narrower than the parent, the whole thing renders
+  off-center (in this case, flush against the left page padding instead
+  of centered on the page). This was caught by an independent code
+  review's direct measurement of the rendered widget tree, not
+  something obvious from reading the code — the "fix" passed every
+  existing test because nothing asserted the controls' position, only
+  their content and tap behavior.
+- **Fix: wrap the `Wrap` in a `Center`.** `Center` (via `Align`), when
+  given a bounded-but-loose width constraint from its parent (the common
+  case — a parent that doesn't force a specific child width but does
+  have a real maximum, like a `Column` with `crossAxisAlignment: start`
+  inside a page with padding), sizes itself to that parent's full
+  available width and then centers its child within it — restoring the
+  same "fill then center" behavior `Row` had by default, without
+  bringing back `Row`'s inability to wrap.
