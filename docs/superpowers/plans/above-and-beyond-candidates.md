@@ -155,3 +155,44 @@ equivalent), swapped in for `VehiclePhoto`'s `defaultVehiclePhotoProvider`
 provider type/cache behavior rather than real disk I/O in a widget test.
 
 **New concept:** `cached_network_image` / disk-backed `ImageProvider`.
+
+### G3. Pagination controls RenderFlex overflow at narrow widths
+
+Found 2026-07-12 by JP testing on a real Samsung Galaxy S20 Ultra
+viewport (via the responsive header-logo work). Real, reproducible
+layout bug — not investigated or fixed yet, needs `systematic-debugging`
+before any fix attempt (root cause unconfirmed).
+
+Console evidence, verbatim:
+
+```
+A RenderFlex overflowed by 85 pixels on the right.
+  creator: Row ← _PaginationControls ← Column ← Padding ← _SrpBody ← SrpScreen ← ...
+  constraints: BoxConstraints(0.0<=w<=163.2, 0.0<=h<=Infinity)
+  size: Size(163.2, 32.0)
+```
+
+Row is at `lib/screens/srp_screen.dart:333`, inside `_PaginationControls`
+— its `Row` (Previous / page indicator / Next, per Task 9's original
+build) doesn't fit inside the ~163px it's actually given at this width.
+Cascades into further errors immediately after (same render pass,
+likely knock-on from the failed layout, not independent bugs):
+
+```
+Assertion failed: .../flutter/lib/src/rendering/sliver_grid.dart:493:12
+Unexpected null value.
+Unexpected null value.
+A RenderFlex overflowed by 38 pixels on the right.
+```
+
+That second, smaller 38px overflow is a separate `Row` somewhere else
+(not yet identified which one — possibly the filter bar or a card
+internal layout) also worth investigating in the same pass, not
+assumed to be the same root cause as the 85px one.
+
+**Not yet scoped as a task** — needs root-cause investigation
+(`systematic-debugging`) before a fix is designed. Likely direction:
+`_PaginationControls`' `Row` needs `Expanded`/flexible children or a
+`Wrap` instead of a fixed `Row` at narrow widths (matches the fix
+pattern Flutter's own overflow message suggests), but confirm the
+actual cause before assuming that's it.
