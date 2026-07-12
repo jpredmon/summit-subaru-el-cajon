@@ -197,6 +197,14 @@ class Vehicle {
   equivalent of the web app's `DOMParser`/`textContent` step — e.g. the
   `html` package's document-parse-then-`.text`), then collapse whitespace.
   Never render raw; never treat as a source of truth for spec-table fields.
+  **Deviation from strict parity:** real data from Summit Subaru El Cajon
+  contains a malformed tag pattern (`&ltb>...&lt/b>`, opening angle-bracket
+  entity-encoded without semicolon, closing angle-bracket literal) that a
+  spec-compliant parser treats as literal text rather than a tag — this is
+  *not* a bug, it's correct per HTML5 tokenization rules, and the reference
+  React app exhibits the same artifact. This build adds a deliberate
+  text-repair step before parsing to strip these malformed sequences,
+  improving submission polish without deviating from core feature parity.
 - `features` arrays are long (avg ~95, max ~120) and inconsistently
   formatted. Trim each entry, dedupe (order-preserving), **and drop any
   entry that's empty after trimming** — this last part is easy to miss

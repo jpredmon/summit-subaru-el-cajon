@@ -181,6 +181,13 @@ void main() {
       final v = transformVehicle(_raw(description: '  a   b  '));
       expect(v.description, 'a b');
     });
+
+    test('repairs a mangled entity-encoded tag (dealer authoring-tool bug) before stripping', () {
+      final v = transformVehicle(
+        _raw(description: r'&ltb>Why BUY from Summit Subaru El Cajon?&lt/b> Great car!'),
+      );
+      expect(v.description, 'Why BUY from Summit Subaru El Cajon? Great car!');
+    });
   });
 
   group('photos passthrough', () {

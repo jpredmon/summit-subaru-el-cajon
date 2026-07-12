@@ -46,11 +46,25 @@ BodyCategory normalizeBodyStyle(String raw) {
   return BodyCategory.other;
 }
 
+/// Repairs a dealer-side authoring-tool bug seen in real Summit Subaru El
+/// Cajon listings: only the opening `<` of a tag gets entity-encoded (and
+/// without its required semicolon -- `&lt` instead of `&lt;`), while the
+/// closing `>` is left as a literal character. A spec-compliant HTML
+/// parser correctly treats the decoded `&lt` as literal text (not a new
+/// tag), so without this repair the mangled tag survives as visible
+/// on-screen text (e.g. `<b>Why BUY...</b>`) instead of being stripped
+/// like the description's other, well-formed tags. Deliberately requires
+/// no semicolon between `&lt` and the tag name, so genuinely well-formed
+/// `&lt;` entities are left untouched.
+String _repairMangledEntityTags(String text) =>
+    text.replaceAllMapped(RegExp(r'&lt(/?[A-Za-z]+)>'), (match) => '<${match.group(1)}>');
+
 /// Sanitizes a raw marketing description for plain-text display: strip the
 /// literal two-character `\n` sequences the API embeds, parse the remaining
 /// HTML to text (decoding entities), then collapse whitespace.
 String stripDescription(String raw) {
-  final withoutEscapedNewlines = raw.replaceAll(r'\n', ' ');
+  final repaired = _repairMangledEntityTags(raw);
+  final withoutEscapedNewlines = repaired.replaceAll(r'\n', ' ');
   final text = html.parse(withoutEscapedNewlines).body?.text ?? '';
   return text.replaceAll(RegExp(r'\s+'), ' ').trim();
 }
