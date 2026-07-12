@@ -228,7 +228,7 @@ step.
 
 ## Above-and-beyond additions (beyond parity scope — not Tasks 1–19)
 
-- [ ] **20. Malformed description entity-tag repair** — real Summit
+- [x] **20. Malformed description entity-tag repair** — real Summit
   Subaru El Cajon listings (confirmed on stock `RH801775` and `PLE17159`)
   have a broken description-authoring template: `&ltb>...&lt/b>` instead
   of `<b>...</b>` (opening `<` entity-encoded without its semicolon,
@@ -265,6 +265,9 @@ step.
   **Docs:** add a short bullet to `docs/SPEC.md`'s description-sanitization
   section documenting this as an intentional, documented deviation from
   strict reference-app parity (not an oversight).
+  **Status:** DONE, committed `08dbf6f` (+ formatting follow-up `8ca4182`).
+  Confidence 93/100. Review clean (1 Minor line-length nit, fixed via
+  `dart format` in the follow-up commit).
 
 ## End-to-end verification (once Tasks 1–13 done)
 
