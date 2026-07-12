@@ -116,3 +116,42 @@ web app can't render true platform-native controls at all.
 resolver directly, no device needed — mirrors Task 15's define-resolver pattern).
 
 **New concept:** `dynamic_color` / `CorePalette`; `.adaptive` constructors.
+
+---
+
+## Real-world gaps (not Flutter-flex, just good practice)
+
+Found during a 2026-07-12 bird's-eye architecture review — distinct from
+C1–C5 above: these aren't "Flutter can do this and React can't" stories,
+just honest answers to "would this hold up as a real shipped app." Same
+scope-discipline rule applies (SPEC.md entry → numbered task → full loop)
+before picking either up.
+
+### G1. Retry action on fetch failure
+
+`lib/screens/srp_screen.dart:49` and `lib/screens/vdp_screen.dart:54` both
+show a static `Text('Failed to load inventory. Please try again later.')`
+with no actual retry affordance — a full page reload is the only way to
+recover from a failed initial fetch. Fix: a visible "Retry" button wired
+to `ref.invalidate(inventoryProvider)` (or `ref.refresh`).
+
+**Test first:** widget test on the error state asserts a "Retry" button
+is present; tapping it (with `inventoryProvider` overridden to succeed on
+the second read) asserts the loaded content replaces the error state.
+
+**New concept:** none new — idiomatic Riverpod cache invalidation,
+already used elsewhere in this codebase's pattern vocabulary.
+
+### G2. Disk-level image cache
+
+`Image.network`/`NetworkImage` gets Flutter's automatic in-memory
+`ImageCache` for free (fine within one session), but nothing persists
+across app relaunches — a real production app re-downloads every vehicle
+photo on every cold start. Likely fix: `cached_network_image` package (or
+equivalent), swapped in for `VehiclePhoto`'s `defaultVehiclePhotoProvider`
+(`lib/widgets/vehicle_photo.dart`).
+
+**Test first:** TBD once scoped — likely asserts the configured image
+provider type/cache behavior rather than real disk I/O in a widget test.
+
+**New concept:** `cached_network_image` / disk-backed `ImageProvider`.
