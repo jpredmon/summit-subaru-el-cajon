@@ -93,9 +93,22 @@ class _PlaceholderPhoto extends StatelessWidget {
                 children: [
                   Image(image: AssetImage('assets/images/summit_subaru_logo.png')),
                   SizedBox(height: 12),
-                  Text(
-                    'Vehicle Image Not Available',
-                    style: TextStyle(fontFamily: 'Anton', fontSize: 20, color: Color(0xFF122847)),
+                  // Sized to 80% of the logo's own 1460px intrinsic width --
+                  // a touch narrower than the red ribbon itself (1308px,
+                  // ~90% of 1460, measured directly from the asset), so this
+                  // reads as "as wide as the ribbon, a little smaller than
+                  // SUMMIT SUBARU" rather than a hand-guessed font size.
+                  // FittedBox(fitWidth) scales the text to exactly fill that
+                  // width regardless of its own fontSize.
+                  SizedBox(
+                    width: 1460 * 0.80,
+                    child: FittedBox(
+                      fit: BoxFit.fitWidth,
+                      child: Text(
+                        'Vehicle Image Not Available',
+                        style: TextStyle(fontFamily: 'Anton', color: Color(0xFF122847)),
+                      ),
+                    ),
                   ),
                 ],
               ),

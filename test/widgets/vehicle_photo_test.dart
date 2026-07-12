@@ -46,6 +46,23 @@ void main() {
     expect(find.text('Vehicle Image Not Available'), findsOneWidget);
   });
 
+  testWidgets('placeholder text is sized relative to the logo\'s own width '
+      '(80% of its 1460px intrinsic width), not a fixed font size', (tester) async {
+    await tester.pumpWidget(
+      _wrap(const VehiclePhoto(photoUrl: null, semanticLabel: 'Vehicle photo')),
+    );
+
+    final textBox = tester.widget<SizedBox>(
+      find.ancestor(of: find.text('Vehicle Image Not Available'), matching: find.byType(SizedBox)).first,
+    );
+    expect(textBox.width, 1460 * 0.80);
+
+    final fittedBox = tester.widget<FittedBox>(
+      find.ancestor(of: find.text('Vehicle Image Not Available'), matching: find.byType(FittedBox)).first,
+    );
+    expect(fittedBox.fit, BoxFit.fitWidth);
+  });
+
   testWidgets('renders the photo when a valid image loads successfully', (tester) async {
     await tester.pumpWidget(
       _wrap(

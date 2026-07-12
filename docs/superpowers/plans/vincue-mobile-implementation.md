@@ -520,6 +520,17 @@ step.
   (shown for the test's photo-less fixture vehicle) started using the
   same logo image as the header. Full suite (249 tests) + `flutter
   analyze` clean.
+  **Follow-up (same day, approved before implementing this time):** JP
+  found the placeholder text too small. Measured the actual logo asset
+  directly (`System.Drawing` pixel scan) rather than guessing — the red
+  ribbon spans 1308 of the logo's 1460px intrinsic width (~90%). Text
+  now sized to 80% of that same 1460px width via `SizedBox` +
+  `FittedBox(fit: BoxFit.fitWidth)` (text auto-scales to exactly fill
+  that width, no fixed font size), reading as "as wide as the ribbon, a
+  little smaller than SUMMIT SUBARU" from real measured geometry rather
+  than a guessed number. New test asserts the exact `SizedBox` width
+  (`1460 * 0.80`) and `FittedBox.fit`. Full suite (250 tests) + `flutter
+  analyze` clean.
 
 ## End-to-end verification (once Tasks 1–13 done)
 
