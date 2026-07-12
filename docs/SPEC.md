@@ -389,6 +389,13 @@ don't apply in Flutter and shouldn't be replicated:
   back to a generic "Vehicle Inventory" string if it's ever empty — VINCUE
   is the platform vendor, not the dealership, so it must never be
   hardcoded as the visible name.
+- **Header logo (above-and-beyond deviation):** the header AppBar shows a
+  fixed Summit Subaru El Cajon logo image instead of the live `dealerName`
+  text described above — a deliberate, documented divergence (see
+  `docs/superpowers/specs/2026-07-12-header-logo-design.md`), not an
+  oversight. The live `dealerName` value is still read and still drives
+  the logo's accessibility label, so screen readers continue to announce
+  it even though sighted users see the fixed graphic.
 
 ## Dev environment & build architecture
 

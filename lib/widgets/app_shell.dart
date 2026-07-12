@@ -13,10 +13,10 @@ import 'theme_toggle_button.dart';
 /// instead. (SPEC "Resilience UX" — a build failure in [child] must not take
 /// the header/theme-toggle down with it.) Individual screens no longer own
 /// their own `Scaffold`/`AppBar`. Requires a `ProviderScope` ancestor (reads
-/// `dealerNameProvider` for the title) -- safe from the [child]-only
-/// failure guarantee above only because `dealerNameProvider` is designed to
-/// never throw (it reads `.value`, never `.requireValue`); it is not itself
-/// wrapped in [ErrorBoundary].
+/// `dealerNameProvider` for the header logo's accessibility label) -- safe
+/// from the [child]-only failure guarantee above only because
+/// `dealerNameProvider` is designed to never throw (it reads `.value`,
+/// never `.requireValue`); it is not itself wrapped in [ErrorBoundary].
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.child});
 
@@ -24,17 +24,26 @@ class AppShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // SPEC "Dealer name" -- the header shows the live dealer name (falling
-    // back to kFallbackDealerName while loading/on error, via
-    // dealerNameProvider), matching the reference app's App.tsx header span.
+    // SPEC "Dealer name" -- kept live (falling back to kFallbackDealerName
+    // while loading/on error, via dealerNameProvider) even though the header
+    // itself now shows a fixed logo (see comment below): this value still
+    // drives the logo's Semantics label for accessibility.
     final dealerName = ref.watch(dealerNameProvider);
 
     return Scaffold(
       appBar: AppBar(
-        // dealerName is unbounded external API data (no length cap) -- same
-        // reasoning as VehicleCard's title (lib/widgets/vehicle_card.dart)
-        // for why an unguarded Text here would risk an AppBar overflow.
-        title: Text(dealerName, maxLines: 1, overflow: TextOverflow.ellipsis),
+        // Above-and-beyond branding (docs/superpowers/specs/2026-07-12-
+        // header-logo-design.md): the header always shows the fixed Summit
+        // Subaru El Cajon logo, a deliberate divergence from SPEC's "live
+        // dealer name in the header" text requirement. dealerName is kept
+        // (not deleted) and now only feeds this Semantics label, so screen
+        // readers still announce the live value even though sighted users
+        // see the fixed graphic.
+        toolbarHeight: 76,
+        title: Semantics(
+          label: dealerName,
+          child: Image.asset('assets/images/summit_subaru_logo.png', fit: BoxFit.contain),
+        ),
         actions: const [ThemeToggleButton()],
       ),
       body: ErrorBoundary(child: child),

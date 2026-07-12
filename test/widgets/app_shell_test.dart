@@ -54,7 +54,17 @@ void main() {
     expect(find.byType(ThemeToggleButton), findsOneWidget);
   });
 
-  testWidgets('shows the live dealer name in the AppBar title', (tester) async {
+  // NOTE (Task 22): the two tests formerly here -- "shows the live dealer
+  // name in the AppBar title" and "caps the dealer name title to one line
+  // with an ellipsis" -- asserted a Text(dealerName) AppBar title that Task
+  // 22 deliberately replaced with a fixed logo image (see
+  // docs/superpowers/specs/2026-07-12-header-logo-design.md). That title
+  // Text widget no longer exists, so those assertions no longer have
+  // anything to test; the live-dealerName behavior they cared about now
+  // lives on as the Semantics label assertion in the test below.
+
+  testWidgets('shows the dealer logo image with the live dealer name as its '
+      'accessibility label', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
 
@@ -73,30 +83,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Summit Subaru El Cajon'), findsOneWidget);
-  });
-
-  testWidgets('caps the dealer name title to one line with an ellipsis', (tester) async {
-    SharedPreferences.setMockInitialValues({});
-    final prefs = await SharedPreferences.getInstance();
-
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          sharedPreferencesProvider.overrideWithValue(prefs),
-          inventoryProvider.overrideWith(
-            (ref) => Future.value(
-              const Inventory(vehicles: [], dealerName: 'Summit Subaru El Cajon'),
-            ),
-          ),
-        ],
-        child: MaterialApp(home: AppShell(child: const Text('SRP content'))),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    final titleText = tester.widget<Text>(find.text('Summit Subaru El Cajon'));
-    expect(titleText.maxLines, 1);
-    expect(titleText.overflow, TextOverflow.ellipsis);
+    expect(find.byType(Image), findsOneWidget);
+    expect(find.bySemanticsLabel('Summit Subaru El Cajon'), findsOneWidget);
   });
 }
