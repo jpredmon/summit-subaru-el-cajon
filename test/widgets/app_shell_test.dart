@@ -130,7 +130,7 @@ void main() {
     expect(appBar.toolbarHeight, 128);
   });
 
-  testWidgets('logo is hidden below the compact breakpoint (600px)', (tester) async {
+  testWidgets('logo still shows below the compact breakpoint (600px) -- kHideLogoAtCompact reverted', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     tester.view.physicalSize = const Size(360, 800);
@@ -152,9 +152,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byType(Image), findsNothing);
-    // Accessibility is preserved even though the logo is visually hidden --
-    // the dealer name is still announced via Semantics.
+    // Task 35 added kHideLogoAtCompact to hide the logo below 600px; JP
+    // decided to keep it visible at every width after seeing it hidden, so
+    // this now confirms the logo still renders here rather than the
+    // opposite. The mechanism (single boolean flag in app_shell.dart) is
+    // unchanged -- flipping it back to `true` restores the hide behavior.
+    expect(find.byType(Image), findsOneWidget);
     expect(find.bySemanticsLabel('Test Dealer'), findsOneWidget);
   });
 

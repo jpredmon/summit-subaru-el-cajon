@@ -5,11 +5,10 @@ import '../providers/inventory_provider.dart';
 import '../theme/breakpoints.dart';
 import 'error_boundary.dart';
 
-/// Single rollback point: JP may decide to keep the logo at every width
-/// (or shrink it further instead of hiding it) after seeing this
-/// rendered. Flip to `false` to restore the logo at every width with no
-/// other code changes needed.
-const bool kHideLogoAtCompact = true;
+/// Single rollback point (Task 35): JP decided to keep the logo at every
+/// width after seeing it hidden at compact widths rendered. Flip back to
+/// `true` to hide it again with no other code changes needed.
+const bool kHideLogoAtCompact = false;
 
 /// Header logo/AppBar sizing per window size class -- grows the logo (and
 /// the AppBar height around it) on wider screens rather than staying a
