@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:vincue_mobile/models/inventory.dart';
+import 'package:vincue_mobile/providers/inventory_provider.dart';
 import 'package:vincue_mobile/providers/theme_mode_provider.dart';
 import 'package:vincue_mobile/widgets/app_shell.dart';
 import 'package:vincue_mobile/widgets/theme_toggle_button.dart';
@@ -50,5 +52,51 @@ void main() {
 
     expect(find.text('SRP content'), findsOneWidget);
     expect(find.byType(ThemeToggleButton), findsOneWidget);
+  });
+
+  testWidgets('shows the live dealer name in the AppBar title', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          inventoryProvider.overrideWith(
+            (ref) => Future.value(
+              const Inventory(vehicles: [], dealerName: 'Summit Subaru El Cajon'),
+            ),
+          ),
+        ],
+        child: MaterialApp(home: AppShell(child: const Text('SRP content'))),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Summit Subaru El Cajon'), findsOneWidget);
+  });
+
+  testWidgets('caps the dealer name title to one line with an ellipsis', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          inventoryProvider.overrideWith(
+            (ref) => Future.value(
+              const Inventory(vehicles: [], dealerName: 'Summit Subaru El Cajon'),
+            ),
+          ),
+        ],
+        child: MaterialApp(home: AppShell(child: const Text('SRP content'))),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final titleText = tester.widget<Text>(find.text('Summit Subaru El Cajon'));
+    expect(titleText.maxLines, 1);
+    expect(titleText.overflow, TextOverflow.ellipsis);
   });
 }

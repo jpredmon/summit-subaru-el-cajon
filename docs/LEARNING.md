@@ -761,3 +761,52 @@ Both of these were flagged by the required per-task review, verified against
   called same-origin by that app, and a browser rejects a cross-origin read
   of a response with no `Access-Control-Allow-Origin` regardless of what's
   actually in the body.
+
+## 2026-07-11 — Bug fix: dealer name missing from the header (found during Task 15b's first live-data test)
+
+- **A browser's "blocked by CORS policy" console error doesn't always mean
+  a CORS misconfiguration.** Any failed cross-origin fetch with no
+  `Access-Control-Allow-Origin` header gets reported this way — including
+  when the *real* cause is a plain server error. One vehicle photo's URL
+  turned out to return HTTP 500 (broken link on VINCUE's own image CDN,
+  confirmed with a direct `curl -I`), and its error page carried no CORS
+  header the way the CDN's successful 200 responses do. The fix wasn't a
+  fix at all: `VehiclePhoto`'s existing `errorBuilder` (Task 8) already
+  falls back to the placeholder for exactly this case.
+- **`AppShell`'s `AppBar` never had a `title:`, so the dealer name was
+  invisible in the UI despite being fetched and derived correctly** —
+  it only ever reached `setDocumentTitle` (the browser tab title), a
+  separate SPEC requirement that was already satisfied. `docs/SPEC.md:379`
+  requires the dealer name in the page **header** too, matching the
+  reference app's visible header span. This is the kind of gap that's
+  invisible in isolated widget tests (they use fixture data, so "no title"
+  and "fallback title" and "real title" all look the same at a glance) but
+  jumps out immediately the first time real data flows through the app —
+  a good argument for testing against a real backend early, not just at
+  the very end.
+- **Converting a `StatelessWidget` to a `ConsumerWidget` moves any provider
+  read outside whatever error boundary wraps only its `child`.** Fixing
+  the dealer-name gap meant `AppShell` itself now calls
+  `ref.watch(dealerNameProvider)` — but `AppShell`'s own `ErrorBoundary`
+  only wraps its `child` parameter (the routed screen), not `AppShell`'s
+  own `build()` body. That's currently safe only because
+  `dealerNameProvider` is deliberately built to never throw (reads
+  `.value`, never `.requireValue`), which is now called out in the class
+  doc comment as a documented precondition rather than an invisible one.
+- **`.gitignore` patterns use last-match-wins, including across
+  negations.** `vercel link` auto-appended a bare `.env*` line *after* an
+  existing `!.env.example` negation, silently re-ignoring `.env.example`
+  for any future `git add` (confirmed with `git check-ignore -v
+  --no-index .env.example`, which is the correct way to test this — the
+  default index-aware `check-ignore` masks the problem for files already
+  tracked, which is what made it easy to miss). Fix was just reordering:
+  any negation needs to be the *last* matching pattern for a path to
+  actually win.
+- **A multi-angle code review (8 parallel finder agents, each reading the
+  diff independently) caught two real, fixable issues that a single review
+  pass likely would have missed** — the `.gitignore` ordering bug and the
+  missing AppBar overflow guard were each found by only one or two of the
+  eight angles. Three separate angles also converged independently on the
+  same minor test-duplication observation, which is a useful cross-check
+  signal on its own (independent agreement without shared context is worth
+  more than one agent stating something with high confidence).
