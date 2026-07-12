@@ -5,6 +5,12 @@ import '../providers/inventory_provider.dart';
 import '../theme/breakpoints.dart';
 import 'error_boundary.dart';
 
+/// Single rollback point: JP may decide to keep the logo at every width
+/// (or shrink it further instead of hiding it) after seeing this
+/// rendered. Flip to `false` to restore the logo at every width with no
+/// other code changes needed.
+const bool kHideLogoAtCompact = true;
+
 /// Header logo/AppBar sizing per window size class -- grows the logo (and
 /// the AppBar height around it) on wider screens rather than staying a
 /// fixed size regardless of viewport, per the same [WindowSizeClass] tiers
@@ -49,7 +55,9 @@ class AppShell extends ConsumerWidget {
     // itself now shows a fixed logo (see comment below): this value still
     // drives the logo's Semantics label for accessibility.
     final dealerName = ref.watch(dealerNameProvider);
-    final sizing = logoSizingFor(windowSizeClassOf(MediaQuery.sizeOf(context).width));
+    final windowSizeClass = windowSizeClassOf(MediaQuery.sizeOf(context).width);
+    final sizing = logoSizingFor(windowSizeClass);
+    final hideLogo = kHideLogoAtCompact && windowSizeClass == WindowSizeClass.compact;
 
     return Scaffold(
       appBar: AppBar(
@@ -64,16 +72,18 @@ class AppShell extends ConsumerWidget {
         // left-aligned on Android) -- this app wants the logo centered
         // everywhere. Sizing grows with window size class (logoSizingFor
         // above) instead of staying fixed regardless of viewport width.
-        toolbarHeight: sizing.toolbarHeight,
+        toolbarHeight: hideLogo ? kToolbarHeight : sizing.toolbarHeight,
         centerTitle: true,
-        title: Semantics(
-          label: dealerName,
-          child: Image.asset(
-            'assets/images/summit_subaru_logo.png',
-            height: sizing.logoHeight,
-            fit: BoxFit.contain,
-          ),
-        ),
+        title: hideLogo
+            ? Semantics(label: dealerName, child: const SizedBox.shrink())
+            : Semantics(
+                label: dealerName,
+                child: Image.asset(
+                  'assets/images/summit_subaru_logo.png',
+                  height: sizing.logoHeight,
+                  fit: BoxFit.contain,
+                ),
+              ),
       ),
       body: ErrorBoundary(child: child),
     );

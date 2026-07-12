@@ -129,4 +129,57 @@ void main() {
     final appBar = tester.widget<AppBar>(find.byType(AppBar));
     expect(appBar.toolbarHeight, 128);
   });
+
+  testWidgets('logo is hidden below the compact breakpoint (600px)', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          inventoryProvider.overrideWith(
+            (ref) => Future.value(
+              const Inventory(vehicles: [], dealerName: 'Test Dealer'),
+            ),
+          ),
+        ],
+        child: MaterialApp(home: AppShell(child: const Text('SRP content'))),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(Image), findsNothing);
+    // Accessibility is preserved even though the logo is visually hidden --
+    // the dealer name is still announced via Semantics.
+    expect(find.bySemanticsLabel('Test Dealer'), findsOneWidget);
+  });
+
+  testWidgets('logo is still shown at 600px and above', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    tester.view.physicalSize = const Size(600, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          inventoryProvider.overrideWith(
+            (ref) => Future.value(
+              const Inventory(vehicles: [], dealerName: 'Test Dealer'),
+            ),
+          ),
+        ],
+        child: MaterialApp(home: AppShell(child: const Text('SRP content'))),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(Image), findsOneWidget);
+  });
 }
