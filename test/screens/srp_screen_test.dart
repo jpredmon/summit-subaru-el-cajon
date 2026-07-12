@@ -856,15 +856,27 @@ void main() {
       expect(makeTop, equals(maxPriceTop));
     });
 
-    testWidgets('medium (700px): make+body share a row, min+max price share a second row', (tester) async {
-      await pumpAt(tester, 700);
-      expect(find.byKey(const Key('apply-filters-toggle')), findsNothing);
-      final makeTop = tester.getTopLeft(find.byKey(const Key('make-filter'))).dy;
-      final bodyTop = tester.getTopLeft(find.byKey(const Key('body-filter'))).dy;
-      final minPriceTop = tester.getTopLeft(find.byKey(const Key('min-price-filter'))).dy;
-      expect(makeTop, equals(bodyTop));
-      expect(minPriceTop, greaterThan(makeTop));
-    });
+    testWidgets(
+      'medium (700px): dropdowns reflow organically -- as many as fit share a row, the rest wrap',
+      (tester) async {
+        await pumpAt(tester, 700);
+        expect(find.byKey(const Key('apply-filters-toggle')), findsNothing);
+        final makeTop = tester.getTopLeft(find.byKey(const Key('make-filter'))).dy;
+        final bodyTop = tester.getTopLeft(find.byKey(const Key('body-filter'))).dy;
+        final minPriceTop = tester.getTopLeft(find.byKey(const Key('min-price-filter'))).dy;
+        final maxPriceTop = tester.getTopLeft(find.byKey(const Key('max-price-filter'))).dy;
+        // With the default (unselected) fixture data at 700px, make+body+min
+        // price together (631.5px) fit within the ~668px available content
+        // width, but adding max price (812.5px total) doesn't -- so max price
+        // wraps to its own row while the other three share the first. This is
+        // Wrap's organic packing, not a hardcoded "2 and 2" split: the exact
+        // grouping depends on each dropdown's actual current content width,
+        // not a fixed count per tier.
+        expect(makeTop, equals(bodyTop));
+        expect(minPriceTop, equals(makeTop));
+        expect(maxPriceTop, greaterThan(makeTop));
+      },
+    );
 
     testWidgets('compact (360px): dropdowns start hidden behind an Apply-filters button', (tester) async {
       await pumpAt(tester, 360);

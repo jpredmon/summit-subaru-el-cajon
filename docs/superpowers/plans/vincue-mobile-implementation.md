@@ -1069,6 +1069,28 @@ paging/URL-sync work, VDP reachable with all four states correct.
   (inherited from Task 33) — JP confirmed content-width is the correct,
   intended behavior; the design spec's wording was corrected instead of
   the code.
+
+  **Follow-up (same day, JP's own idea, approved before implementing):**
+  replaced the expanded/medium tiers' hardcoded "4 in a row" / "2 per row"
+  `Row`/`Column` split with a single `Wrap` for both tiers — organic
+  reflow (pack as many dropdowns as actually fit on a line, wrap the rest)
+  instead of a fixed count per breakpoint, since each dropdown is already
+  sized to its own content (Task 33). Simpler than the tier-split code it
+  replaced, not more complex. **Test-first:** updated the medium-width
+  test (`test/screens/srp_screen_test.dart`) from asserting a rigid 2+2
+  split to asserting the organic-packing result with the default fixture
+  data at 700px — measured directly (a throwaway probe test, not guessed):
+  make+body+minPrice together need 631.5px, fitting the ~668px available;
+  adding maxPrice needs 812.5px, which doesn't — so 3 share the first row
+  and maxPrice wraps alone. RED confirmed against the old hardcoded split
+  (minPrice landed on row 2, not row 1, under the old code) before
+  implementing. Full suite (267 tests) + `flutter analyze` clean.
+  **Accepted, named trade-off:** unlike the fixed 2+2 split, `Wrap`'s
+  greedy packing doesn't guarantee a symmetric grouping — which dropdowns
+  share a row can shift as filter selections change their content width
+  (same class of cosmetic quirk already accepted for `Wrap` elsewhere in
+  this file, e.g. Task 29's pagination controls).
+
   per the design spec's "Filter bar layout per tier" section. Builds on
   Task 33's content-driven dropdown widths (each dropdown is already sized
   to its own content; this task only changes how the four are *arranged*).

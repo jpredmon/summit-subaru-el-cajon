@@ -299,19 +299,18 @@ class _FilterBarState extends State<_FilterBar> {
 
     switch (windowSizeClass) {
       case WindowSizeClass.expanded:
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [make, const SizedBox(width: 12), body, const SizedBox(width: 12), minPrice, const SizedBox(width: 12), maxPrice],
-        );
       case WindowSizeClass.medium:
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(mainAxisSize: MainAxisSize.min, children: [make, const SizedBox(width: 12), body]),
-            const SizedBox(height: 12),
-            Row(mainAxisSize: MainAxisSize.min, children: [minPrice, const SizedBox(width: 12), maxPrice]),
-          ],
+        // Organic reflow, not a hardcoded "4 in a row" / "2 per row" split:
+        // Wrap packs as many dropdowns as actually fit on a line -- given
+        // each is already sized to its own content (see
+        // _dropdownContentWidth above) -- and only drops the next one to a
+        // new line once it genuinely doesn't fit. The exact grouping
+        // therefore depends on real content widths, not the viewport's
+        // window-size-class alone.
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [make, body, minPrice, maxPrice],
         );
       case WindowSizeClass.compact:
         if (!_compactFiltersOpen) {
