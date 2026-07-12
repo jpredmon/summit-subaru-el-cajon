@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/inventory_provider.dart';
 import '../theme/breakpoints.dart';
 import 'error_boundary.dart';
-import 'theme_toggle_button.dart';
 
 /// Header logo/AppBar sizing per window size class -- grows the logo (and
 /// the AppBar height around it) on wider screens rather than staying a
@@ -23,18 +22,21 @@ import 'theme_toggle_button.dart';
   }
 }
 
-/// The single persistent chrome (header + theme toggle) around every route,
-/// wired in via a go_router `ShellRoute` (see `app_router.dart`) rather than
+/// The single persistent chrome (header logo) around every route, wired in
+/// via a go_router `ShellRoute` (see `app_router.dart`) rather than
 /// `MaterialApp.router`'s `builder` — that `builder` sits *above* the
-/// Router's own `Navigator`/`Overlay`, which breaks `Tooltip`s like
-/// [ThemeToggleButton]'s; `ShellRoute` nests this shell inside that Navigator
-/// instead. (SPEC "Resilience UX" — a build failure in [child] must not take
-/// the header/theme-toggle down with it.) Individual screens no longer own
-/// their own `Scaffold`/`AppBar`. Requires a `ProviderScope` ancestor (reads
-/// `dealerNameProvider` for the header logo's accessibility label) -- safe
-/// from the [child]-only failure guarantee above only because
-/// `dealerNameProvider` is designed to never throw (it reads `.value`,
-/// never `.requireValue`); it is not itself wrapped in [ErrorBoundary].
+/// Router's own `Navigator`/`Overlay`, which breaks `Tooltip`-bearing
+/// widgets nested under it (the original motivation: `ThemeToggleButton`'s
+/// `Tooltip`, back when it lived in this AppBar); `ShellRoute` nests this
+/// shell inside that Navigator instead. Still the correct wiring for any
+/// future `Tooltip`-bearing widget added here. (SPEC "Resilience UX" — a
+/// build failure in [child] must not take the header down with it.)
+/// Individual screens no longer own their own `Scaffold`/`AppBar`. Requires
+/// a `ProviderScope` ancestor (reads `dealerNameProvider` for the header
+/// logo's accessibility label) -- safe from the [child]-only failure
+/// guarantee above only because `dealerNameProvider` is designed to never
+/// throw (it reads `.value`, never `.requireValue`); it is not itself
+/// wrapped in [ErrorBoundary].
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.child});
 
@@ -72,7 +74,6 @@ class AppShell extends ConsumerWidget {
             fit: BoxFit.contain,
           ),
         ),
-        actions: const [ThemeToggleButton()],
       ),
       body: ErrorBoundary(child: child),
     );

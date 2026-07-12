@@ -52,7 +52,16 @@ class VincueMobileApp extends ConsumerWidget {
       title: 'VINCUE Inventory',
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
-      themeMode: ref.watch(themeModeProvider),
+      // Above-and-beyond decision (docs/superpowers/specs, dark-mode-
+      // disabled note): forced light-only for now -- the header logo's
+      // palette doesn't read well against the dark theme yet, and no time
+      // budgeted to also tune dark-mode contrast for it. Deliberately NOT
+      // ref.watch(themeModeProvider) -- that provider (and ThemeModeNotifier,
+      // and its shared_preferences persistence) is kept fully working and
+      // untouched, just not wired to this app's actual theme, so re-enabling
+      // dark mode later is a one-line change back to
+      // ref.watch(themeModeProvider), not a rebuild of the mechanism.
+      themeMode: ThemeMode.light,
       routerConfig: ref.watch(appRouterProvider),
     );
   }

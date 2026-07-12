@@ -349,6 +349,16 @@ don't apply in Flutter and shouldn't be replicated:
   because a JS module import can't run early enough — Flutter has no such
   penalty; resolve `ThemeMode` from the persisted value before the first
   frame (no duplicate-logic workaround needed).
+  **Deviation (above-and-beyond, not an oversight):** as of the header-logo
+  work, this build forces `ThemeMode.light` and no longer exposes the
+  toggle in the UI — the header logo's palette doesn't read well against
+  the dark theme, and no time was budgeted to also tune dark-mode contrast
+  for it. The underlying mechanism (`themeModeProvider`, `ThemeModeNotifier`,
+  its `shared_preferences` persistence, and the standalone `ThemeToggleButton`
+  widget) is fully intact and untouched — only `main.dart`'s
+  `VincueMobileApp` no longer reads it for the app's actual `themeMode`.
+  Re-enabling is a one-line change back to `ref.watch(themeModeProvider)`,
+  not a rebuild of the feature.
 - **Accessibility:** keyboard/focus-traversal parity goal — filters → cards
   → pagination → VDP → carousel → back, all reachable without a pointer
   (Flutter web Tab order; native Android via TalkBack semantics). The web

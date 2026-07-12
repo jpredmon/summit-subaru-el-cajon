@@ -414,6 +414,35 @@ step.
   (`Icon-maskable-192.png`, `Icon-maskable-512.png`) are left as Flutter's
   defaults — the generated package didn't include maskable-safe variants.
 
+- [x] **24. Disable dark mode (force light, keep infrastructure intact)** —
+  above-and-beyond decision, not a bugfix: the header logo's palette
+  (navy/gold/red/green) doesn't read well against the dark theme, and no
+  time budgeted to also tune dark-mode contrast for it. Per JP's explicit
+  call: `lib/main.dart`'s `VincueMobileApp` now hardcodes
+  `themeMode: ThemeMode.light` instead of `ref.watch(themeModeProvider)`;
+  `lib/widgets/app_shell.dart`'s `AppBar` no longer includes
+  `ThemeToggleButton` in `actions`. **Deliberately not deleted:**
+  `themeModeProvider`/`ThemeModeNotifier`
+  (`lib/providers/theme_mode_provider.dart`), its `shared_preferences`
+  persistence, and the standalone `ThemeToggleButton` widget — all fully
+  intact and still tested in isolation
+  (`test/widgets/theme_toggle_button_test.dart`, unaffected since it
+  builds the button standalone, not through `AppShell`). Re-enabling later
+  is a one-line change back to `ref.watch(themeModeProvider)`, not a
+  rebuild. Documented in `docs/SPEC.md`'s "Dark mode" section as an
+  explicit deviation. **No new tests** (this removes UI surface rather
+  than adding behavior) — instead, updated the tests that broke because
+  `ThemeToggleButton` is no longer in `AppShell`'s tree:
+  `test/widgets/app_shell_test.dart` (two tests, now check the header
+  logo `Image` survives instead of tapping the toggle) and
+  `test/router/app_router_test.dart` (the ShellRoute/Tooltip-ancestry
+  regression test, now checks the logo renders across SRP↔VDP navigation
+  instead of the toggle — the `ShellRoute` wiring it guards is unchanged,
+  only which widget exercises it). `test/widget_test.dart`'s
+  `themeModeProvider`-toggling regression test is untouched and still
+  passes — it exercises the provider directly, not the UI toggle. Full
+  suite (242 tests) + `flutter analyze` clean.
+
 ## End-to-end verification (once Tasks 1–13 done)
 
 `flutter run -d web-server --web-port=8765`, open `http://localhost:8765`

@@ -10,7 +10,6 @@ import 'package:vincue_mobile/providers/theme_mode_provider.dart';
 import 'package:vincue_mobile/router/app_router.dart';
 import 'package:vincue_mobile/screens/srp_screen.dart';
 import 'package:vincue_mobile/screens/vdp_screen.dart';
-import 'package:vincue_mobile/widgets/theme_toggle_button.dart';
 import 'package:vincue_mobile/widgets/vehicle_card.dart';
 
 import '../support/vehicle_factory.dart';
@@ -253,10 +252,13 @@ void main() {
   });
 
   testWidgets(
-    'the shared AppShell chrome (ThemeToggleButton) renders and is tappable at both '
-    'routes when wired through the real ShellRoute -- regression coverage for the '
-    'Tooltip/Overlay-ancestry bug hit when AppShell was wired via '
-    "MaterialApp.router's builder instead",
+    'the shared AppShell chrome (header logo) renders at both routes when wired '
+    'through the real ShellRoute -- regression coverage for the Tooltip/Overlay-'
+    'ancestry bug hit when AppShell was wired via MaterialApp.router\'s builder '
+    'instead (originally caught via ThemeToggleButton\'s Tooltip, before dark mode '
+    'was disabled -- see docs/superpowers/specs, dark-mode-disabled note; the '
+    'ShellRoute wiring this guards is unchanged, so this still checks the chrome '
+    'renders correctly through it, just via the logo instead)',
     (tester) async {
       final router = buildAppRouter();
       await tester.pumpWidget(
@@ -272,15 +274,12 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byType(ThemeToggleButton), findsOneWidget);
-      await tester.tap(find.byType(ThemeToggleButton));
-      await tester.pump();
-      expect(find.byIcon(Icons.dark_mode), findsOneWidget);
+      expect(find.byType(Image), findsOneWidget);
 
       await tester.tap(find.byType(VehicleCard));
       await tester.pumpAndSettle();
 
-      expect(find.byType(ThemeToggleButton), findsOneWidget);
+      expect(find.byType(Image), findsOneWidget);
     },
   );
 
