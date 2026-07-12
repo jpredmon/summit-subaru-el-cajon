@@ -56,8 +56,10 @@ BodyCategory normalizeBodyStyle(String raw) {
 /// like the description's other, well-formed tags. Deliberately requires
 /// no semicolon between `&lt` and the tag name, so genuinely well-formed
 /// `&lt;` entities are left untouched.
-String _repairMangledEntityTags(String text) =>
-    text.replaceAllMapped(RegExp(r'&lt(/?[A-Za-z]+)>'), (match) => '<${match.group(1)}>');
+String _repairMangledEntityTags(String text) => text.replaceAllMapped(
+  RegExp(r'&lt(/?[A-Za-z]+)>'),
+  (match) => '<${match.group(1)}>',
+);
 
 /// Sanitizes a raw marketing description for plain-text display: strip the
 /// literal two-character `\n` sequences the API embeds, parse the remaining
