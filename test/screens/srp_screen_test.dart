@@ -699,6 +699,77 @@ void main() {
     },
   );
 
+  group('dropdown width tracks selected content (Task 33)', () {
+    testWidgets('a short make selection renders narrower than a long one', (tester) async {
+      final shortInventory = Inventory(vehicles: [vehicle(id: 1, make: 'Kia')], dealerName: 'Test Dealer');
+      await tester.pumpWidget(
+        _wrap(
+          ProviderScope(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              inventoryProvider.overrideWith((ref) => Future.value(shortInventory)),
+            ],
+            child: const SrpScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      var context = tester.element(find.byType(SrpScreen));
+      ProviderScope.containerOf(context).read(srpStateProvider.notifier).restoreFrom(
+            const SrpFilterState(filters: VehicleFilters(make: 'Kia')),
+          );
+      await tester.pumpAndSettle();
+      final shortWidth = tester.getSize(find.byKey(const Key('make-filter'))).width;
+
+      final longInventory = Inventory(vehicles: [vehicle(id: 1, make: 'Volkswagen')], dealerName: 'Test Dealer');
+      await tester.pumpWidget(
+        _wrap(
+          ProviderScope(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              inventoryProvider.overrideWith((ref) => Future.value(longInventory)),
+            ],
+            child: const SrpScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      context = tester.element(find.byType(SrpScreen));
+      ProviderScope.containerOf(context).read(srpStateProvider.notifier).restoreFrom(
+            const SrpFilterState(filters: VehicleFilters(make: 'Volkswagen')),
+          );
+      await tester.pumpAndSettle();
+      final longWidth = tester.getSize(find.byKey(const Key('make-filter'))).width;
+
+      expect(shortWidth, lessThan(longWidth));
+    });
+
+    testWidgets('an unusually long make is clamped to the max width, not left to overflow', (tester) async {
+      const pathologicalMake = 'A Pathologically Long Make Name That Should Never Really Occur';
+      final inventory = Inventory(vehicles: [vehicle(id: 1, make: pathologicalMake)], dealerName: 'Test Dealer');
+      await tester.pumpWidget(
+        _wrap(
+          ProviderScope(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              inventoryProvider.overrideWith((ref) => Future.value(inventory)),
+            ],
+            child: const SrpScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final context = tester.element(find.byType(SrpScreen));
+      ProviderScope.containerOf(context).read(srpStateProvider.notifier).restoreFrom(
+            const SrpFilterState(filters: VehicleFilters(make: pathologicalMake)),
+          );
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(tester.getSize(find.byKey(const Key('make-filter'))).width, lessThanOrEqualTo(234));
+    });
+  });
+
   group('width cap at expanded viewport', () {
     testWidgets('expanded width: wraps content in a 1200-max-width ConstrainedBox', (tester) async {
       tester.view.physicalSize = const Size(1000, 800);

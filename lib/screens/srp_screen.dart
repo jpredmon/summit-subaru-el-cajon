@@ -266,6 +266,21 @@ class _EmptyResults extends StatelessWidget {
   }
 }
 
+double _dropdownContentWidth(String text, TextStyle style, {required double maxWidth}) {
+  final painter = TextPainter(
+    text: TextSpan(text: text, style: style),
+    textDirection: TextDirection.ltr,
+    maxLines: 1,
+  )..layout();
+  return (painter.width + _dropdownChromeAllowance).clamp(_dropdownMinWidth, maxWidth);
+}
+
+// Measured empirically (not guessed): a single-item DropdownButton's
+// rendered width minus its Text child's raw TextPainter width, for the
+// arrow icon + internal padding. See the design spec's probe test.
+const double _dropdownChromeAllowance = 24;
+const double _dropdownMinWidth = 72;
+
 class _FilterBar extends StatelessWidget {
   const _FilterBar({required this.filters, required this.options, required this.notifier});
 
@@ -273,18 +288,24 @@ class _FilterBar extends StatelessWidget {
   final FilterOptions options;
   final SrpStateNotifier notifier;
 
-  // Comfortably above every dropdown's measured natural width with
-  // realistic (not just single-fixture-test) data -- make ~234px, body
-  // style ~266px, the two price dropdowns ~169px each. Without this cap,
-  // `isExpanded` (needed so a dropdown can shrink to fit a narrow Wrap
-  // line) instead greedily fills a WIDE one too, stacking all four
-  // vertically instead of sitting side by side.
-  static const double _dropdownMaxWidth = 300;
+  static const double _makeMaxWidth = 234;
+  static const double _bodyMaxWidth = 266;
+  static const double _priceMaxWidth = 169;
 
   @override
   Widget build(BuildContext context) {
     final minPriceItems = minPriceOptions(filters.maxPrice);
     final maxPriceItems = maxPriceOptions(filters.minPrice);
+
+    final dropdownStyle = Theme.of(context).textTheme.bodyLarge!;
+    final makeValue = _validValue(filters.make, options.makes);
+    final bodyValue = _validValue(filters.body, options.bodyStyles);
+    final minPriceValue = _validValue(filters.minPrice, minPriceItems);
+    final maxPriceValue = _validValue(filters.maxPrice, maxPriceItems);
+    final makeText = makeValue ?? 'All makes';
+    final bodyText = bodyValue?.displayName ?? 'All body styles';
+    final minPriceText = minPriceValue != null ? formatPrice(minPriceValue) : 'Min price';
+    final maxPriceText = maxPriceValue != null ? formatPrice(maxPriceValue) : 'Max price';
 
     return Wrap(
       spacing: 12,
@@ -292,20 +313,13 @@ class _FilterBar extends StatelessWidget {
       children: [
         Semantics(
           label: 'Make',
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: _dropdownMaxWidth),
+          child: SizedBox(
+            width: _dropdownContentWidth(makeText, dropdownStyle, maxWidth: _makeMaxWidth),
             child: DropdownButton<String?>(
-              // Without this, DropdownButton reserves width for its widest
-              // item across ALL options (here, "All makes"), not just the
-              // current selection, and never shrinks below that -- overflows
-              // once alone on its own Wrap line at a narrow width even when
-              // the actual selected text is short. isExpanded lets it fill
-              // (and shrink to) whatever width its parent actually gives it
-              // instead -- bounded by the ConstrainedBox above so it can't
-              // also grow past a sensible width on a wide screen.
               isExpanded: true,
+              style: dropdownStyle,
               key: const Key('make-filter'),
-              value: _validValue(filters.make, options.makes),
+              value: makeValue,
               items: [
                 const DropdownMenuItem<String?>(value: null, child: Text('All makes', overflow: TextOverflow.ellipsis)),
                 ...options.makes.map(
@@ -318,12 +332,13 @@ class _FilterBar extends StatelessWidget {
         ),
         Semantics(
           label: 'Body style',
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: _dropdownMaxWidth),
+          child: SizedBox(
+            width: _dropdownContentWidth(bodyText, dropdownStyle, maxWidth: _bodyMaxWidth),
             child: DropdownButton<BodyCategory?>(
               isExpanded: true,
+              style: dropdownStyle,
               key: const Key('body-filter'),
-              value: _validValue(filters.body, options.bodyStyles),
+              value: bodyValue,
               items: [
                 const DropdownMenuItem<BodyCategory?>(
                   value: null,
@@ -342,12 +357,13 @@ class _FilterBar extends StatelessWidget {
         ),
         Semantics(
           label: 'Minimum price',
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: _dropdownMaxWidth),
+          child: SizedBox(
+            width: _dropdownContentWidth(minPriceText, dropdownStyle, maxWidth: _priceMaxWidth),
             child: DropdownButton<double?>(
               isExpanded: true,
+              style: dropdownStyle,
               key: const Key('min-price-filter'),
-              value: _validValue(filters.minPrice, minPriceItems),
+              value: minPriceValue,
               items: [
                 const DropdownMenuItem<double?>(value: null, child: Text('Min price', overflow: TextOverflow.ellipsis)),
                 ...minPriceItems.map(
@@ -363,12 +379,13 @@ class _FilterBar extends StatelessWidget {
         ),
         Semantics(
           label: 'Maximum price',
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: _dropdownMaxWidth),
+          child: SizedBox(
+            width: _dropdownContentWidth(maxPriceText, dropdownStyle, maxWidth: _priceMaxWidth),
             child: DropdownButton<double?>(
               isExpanded: true,
+              style: dropdownStyle,
               key: const Key('max-price-filter'),
-              value: _validValue(filters.maxPrice, maxPriceItems),
+              value: maxPriceValue,
               items: [
                 const DropdownMenuItem<double?>(value: null, child: Text('Max price', overflow: TextOverflow.ellipsis)),
                 ...maxPriceItems.map(
