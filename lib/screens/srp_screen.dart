@@ -273,6 +273,14 @@ class _FilterBar extends StatelessWidget {
   final FilterOptions options;
   final SrpStateNotifier notifier;
 
+  // Comfortably above every dropdown's measured natural width with
+  // realistic (not just single-fixture-test) data -- make ~234px, body
+  // style ~266px, the two price dropdowns ~169px each. Without this cap,
+  // `isExpanded` (needed so a dropdown can shrink to fit a narrow Wrap
+  // line) instead greedily fills a WIDE one too, stacking all four
+  // vertically instead of sitting side by side.
+  static const double _dropdownMaxWidth = 300;
+
   @override
   Widget build(BuildContext context) {
     final minPriceItems = minPriceOptions(filters.maxPrice);
@@ -284,54 +292,94 @@ class _FilterBar extends StatelessWidget {
       children: [
         Semantics(
           label: 'Make',
-          child: DropdownButton<String?>(
-            key: const Key('make-filter'),
-            value: _validValue(filters.make, options.makes),
-            items: [
-              const DropdownMenuItem<String?>(value: null, child: Text('All makes')),
-              ...options.makes.map((make) => DropdownMenuItem<String?>(value: make, child: Text(make))),
-            ],
-            onChanged: notifier.setMake,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: _dropdownMaxWidth),
+            child: DropdownButton<String?>(
+              // Without this, DropdownButton reserves width for its widest
+              // item across ALL options (here, "All makes"), not just the
+              // current selection, and never shrinks below that -- overflows
+              // once alone on its own Wrap line at a narrow width even when
+              // the actual selected text is short. isExpanded lets it fill
+              // (and shrink to) whatever width its parent actually gives it
+              // instead -- bounded by the ConstrainedBox above so it can't
+              // also grow past a sensible width on a wide screen.
+              isExpanded: true,
+              key: const Key('make-filter'),
+              value: _validValue(filters.make, options.makes),
+              items: [
+                const DropdownMenuItem<String?>(value: null, child: Text('All makes', overflow: TextOverflow.ellipsis)),
+                ...options.makes.map(
+                  (make) => DropdownMenuItem<String?>(value: make, child: Text(make, overflow: TextOverflow.ellipsis)),
+                ),
+              ],
+              onChanged: notifier.setMake,
+            ),
           ),
         ),
         Semantics(
           label: 'Body style',
-          child: DropdownButton<BodyCategory?>(
-            key: const Key('body-filter'),
-            value: _validValue(filters.body, options.bodyStyles),
-            items: [
-              const DropdownMenuItem<BodyCategory?>(value: null, child: Text('All body styles')),
-              ...options.bodyStyles.map(
-                (body) => DropdownMenuItem<BodyCategory?>(value: body, child: Text(body.displayName)),
-              ),
-            ],
-            onChanged: notifier.setBody,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: _dropdownMaxWidth),
+            child: DropdownButton<BodyCategory?>(
+              isExpanded: true,
+              key: const Key('body-filter'),
+              value: _validValue(filters.body, options.bodyStyles),
+              items: [
+                const DropdownMenuItem<BodyCategory?>(
+                  value: null,
+                  child: Text('All body styles', overflow: TextOverflow.ellipsis),
+                ),
+                ...options.bodyStyles.map(
+                  (body) => DropdownMenuItem<BodyCategory?>(
+                    value: body,
+                    child: Text(body.displayName, overflow: TextOverflow.ellipsis),
+                  ),
+                ),
+              ],
+              onChanged: notifier.setBody,
+            ),
           ),
         ),
         Semantics(
           label: 'Minimum price',
-          child: DropdownButton<double?>(
-            key: const Key('min-price-filter'),
-            value: _validValue(filters.minPrice, minPriceItems),
-            items: [
-              const DropdownMenuItem<double?>(value: null, child: Text('Min price')),
-              ...minPriceItems
-                  .map((threshold) => DropdownMenuItem<double?>(value: threshold, child: Text(formatPrice(threshold)))),
-            ],
-            onChanged: notifier.setMinPrice,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: _dropdownMaxWidth),
+            child: DropdownButton<double?>(
+              isExpanded: true,
+              key: const Key('min-price-filter'),
+              value: _validValue(filters.minPrice, minPriceItems),
+              items: [
+                const DropdownMenuItem<double?>(value: null, child: Text('Min price', overflow: TextOverflow.ellipsis)),
+                ...minPriceItems.map(
+                  (threshold) => DropdownMenuItem<double?>(
+                    value: threshold,
+                    child: Text(formatPrice(threshold), overflow: TextOverflow.ellipsis),
+                  ),
+                ),
+              ],
+              onChanged: notifier.setMinPrice,
+            ),
           ),
         ),
         Semantics(
           label: 'Maximum price',
-          child: DropdownButton<double?>(
-            key: const Key('max-price-filter'),
-            value: _validValue(filters.maxPrice, maxPriceItems),
-            items: [
-              const DropdownMenuItem<double?>(value: null, child: Text('Max price')),
-              ...maxPriceItems
-                  .map((threshold) => DropdownMenuItem<double?>(value: threshold, child: Text(formatPrice(threshold)))),
-            ],
-            onChanged: notifier.setMaxPrice,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: _dropdownMaxWidth),
+            child: DropdownButton<double?>(
+              isExpanded: true,
+              key: const Key('max-price-filter'),
+              value: _validValue(filters.maxPrice, maxPriceItems),
+              items: [
+                const DropdownMenuItem<double?>(value: null, child: Text('Max price', overflow: TextOverflow.ellipsis)),
+                ...maxPriceItems.map(
+                  (threshold) => DropdownMenuItem<double?>(
+                    value: threshold,
+                    child: Text(formatPrice(threshold), overflow: TextOverflow.ellipsis),
+                  ),
+                ),
+              ],
+              onChanged: notifier.setMaxPrice,
+            ),
           ),
         ),
       ],

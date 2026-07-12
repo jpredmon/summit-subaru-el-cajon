@@ -187,19 +187,15 @@ A RenderFlex overflowed by 38 pixels on the right.
 ```
 
 That second, smaller 38px overflow is a separate `Row` somewhere else —
-**identified during Task 29's investigation (2026-07-12), NOT fixed**:
-one of `_FilterBar`'s `DropdownButton`s (`lib/screens/srp_screen.dart`,
-the Make/Body/Min price/Max price dropdowns), whose internal
-selected-item-plus-arrow `Row` (Flutter's own `DropdownButton`
-internals, not app code) overflows below roughly 300px of available
-content width. Confirmed independent of `_PaginationControls`'s bug —
-reproduces on the *old* `Row`-based pagination code too, and persists
-after Task 29's fix. Deliberately left unfixed as out of scope for
-Task 29 (a different widget, a different root cause, would need its own
-investigation into whether a narrower dropdown item label, a custom
-dropdown affordance, or something else is the right fix). **Not yet a
-numbered task** — pick up with its own `systematic-debugging` pass
-before designing a fix, same discipline as this entry got.
+**identified during Task 29's investigation (2026-07-12) and FIXED in
+Task 30 (same day)**: one of `_FilterBar`'s `DropdownButton`s
+(`lib/screens/srp_screen.dart`, the Make/Body/Min price/Max price
+dropdowns) reserves width for its widest possible item across all
+options (e.g. "All body styles"), not its current selection, and never
+shrinks below that — confirmed overflowing from 280px down through well
+below 140px of available width. Fixed with `isExpanded: true` on all
+four dropdowns, Flutter's own documented mechanism for this exact case
+— see Task 30 in `vincue-mobile-implementation.md`.
 
 **Task 29's fix:** `_PaginationControls`' `Row` (Previous / page
 indicator / Next) had three non-flexible children whose combined

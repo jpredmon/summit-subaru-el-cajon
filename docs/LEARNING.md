@@ -967,3 +967,40 @@ Both of these were flagged by the required per-task review, verified against
   available width and then centers its child within it — restoring the
   same "fill then center" behavior `Row` had by default, without
   bringing back `Row`'s inability to wrap.
+
+## 2026-07-12 — `DropdownButton.isExpanded` (Task 30: filter dropdown overflow)
+
+- **`DropdownButton` (default `isExpanded: false`) sizes itself to its
+  *widest possible item*, not its current selection.** Flutter measures
+  every entry in `items` (off-screen, via an internal `IndexedStack`) so
+  the button never resizes when the user picks a different option — but
+  that means a dropdown showing a short current value (e.g. "Sedan")
+  still reserves as much width as its longest option ("All body
+  styles"), and never shrinks below that reserved width, however little
+  space its parent actually gives it. That's why this app's filter
+  dropdowns overflowed at narrow widths even though the *visible* text
+  was short — confirmed directly (not guessed) by testing the same
+  widget with and without the fix at seven widths from 140px to 280px.
+- **`isExpanded: true` is the documented fix for the narrow case, but it
+  swings the opposite way at a wide one.** It makes the button fill
+  (and, critically, allows it to *shrink to fit*) whatever width its
+  parent actually gives it — but inside a `Wrap`, "whatever width its
+  parent gives it" is the *entire* line's available width, not "enough
+  to fit its own content." An independent code review caught this
+  before it shipped: adding `isExpanded: true` alone made all four
+  filter dropdowns stretch to the full page width and stack vertically
+  on any wide screen, instead of sitting compactly side by side the way
+  they did before. Confirmed by measuring the same widget at a 1200px
+  viewport with and without the fix (1168px-wide stacked rows vs. the
+  original compact side-by-side layout).
+- **Fix: bound it with a `ConstrainedBox`.** `isExpanded: true` +
+  `ConstrainedBox(maxWidth: 300)` gives the best of both — it can still
+  shrink below 300px on a narrow `Wrap` line, but can no longer grow
+  past 300px on a wide one. The 300px figure came from measuring each
+  dropdown's real natural width with realistic (not just single-fixture)
+  data, not a round number picked by feel. Also added `overflow:
+  TextOverflow.ellipsis` to every item's `Text` (matching a pattern
+  `VehicleCard` already uses for the same dealer-supplied make/model
+  fields one screen over) — this makes the *exact* width chosen for the
+  cap non-critical, since anything longer than it now truncates
+  gracefully instead of overflowing.

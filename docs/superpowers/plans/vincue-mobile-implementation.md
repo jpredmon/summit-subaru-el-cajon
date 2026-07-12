@@ -704,3 +704,57 @@ paging/URL-sync work, VDP reachable with all four states correct.
   a real but minor cosmetic quirk of `Wrap`'s greedy packing algorithm,
   not fixed — accepted as a minor, honestly-named trade-off, same
   treatment as Task 28's masonry row-alignment note.
+
+- [x] **30. Filter dropdown overflow at narrow widths** — real bug,
+  found during Task 29's own investigation and deliberately deferred
+  there; picked up immediately after as its own task. Root-caused via
+  `systematic-debugging` before any fix: `DropdownButton` (Flutter's
+  default `isExpanded: false`) reserves width for its *widest possible
+  item across all options* (e.g. "All body styles"), not the current
+  selection, and never shrinks below that — so even a short selected
+  value overflows once its `Wrap` line in `_FilterBar`
+  (`lib/screens/srp_screen.dart`) is narrower than that reserved width.
+  Confirmed the exact threshold empirically: overflows from 280px down
+  to well below 140px on the unfixed widget, clean at 300px+.
+  **Independent review caught a second real regression the first fix
+  attempt (`isExpanded: true` alone) shipped:** `isExpanded` makes a
+  `DropdownButton` fill whatever width its parent gives it — inside a
+  `Wrap`, that's the *entire* line width, not just enough to fit its
+  content, so at a wide viewport all four dropdowns stretched to full
+  width and stacked vertically instead of sitting side by side the way
+  they did before this fix. Reproduced and confirmed myself (measured
+  each dropdown at 1168px wide, one per line, at a 1200px viewport)
+  before fixing it. **Final fix:** `isExpanded: true` (still needed, so
+  a dropdown *can* shrink to fit a narrow line) plus a `ConstrainedBox
+  (maxWidth: 300)` around each one (so it can't also grow past a
+  sensible width on a wide line) — 300 chosen from measuring each
+  dropdown's natural width with realistic longer data (make ~234px,
+  body style ~266px, both price dropdowns ~169px), not guessed. Also
+  added `overflow: TextOverflow.ellipsis` to every `DropdownMenuItem`'s
+  `Text` (a second review finding: `VehicleCard` already applies this
+  exact defense to the same dealer-supplied `make`/`model` fields one
+  screen over, undermining an earlier "can't currently happen"
+  justification for skipping it here) — this also makes the exact
+  300px cap non-critical, since an unexpectedly long value now
+  truncates gracefully instead of overflowing regardless of the bound
+  chosen. **New concept:** `DropdownButton.isExpanded` and its
+  interaction with `Wrap`'s unbounded-per-child sizing — documented in
+  `docs/LEARNING.md`. **Test first (both the bug and each review
+  catch):** `test/screens/srp_screen_test.dart` — a 220px-viewport
+  regression test for the original overflow (RED confirmed against the
+  un-fixed widget, reproducing a 78px overflow), and a second test
+  asserting all four dropdowns stay ≤300px wide at a 1200px viewport
+  (RED confirmed against the `isExpanded`-only fix, each dropdown
+  measured at exactly 1168px). Full suite (259 tests) + `flutter
+  analyze` clean.
+  **Confidence: 94/100.** The core mechanism (`isExpanded` +
+  `ConstrainedBox` + `ellipsis`) is now verified at both extremes
+  (140px narrow, 1200px wide) rather than assumed from documentation
+  alone, and a second independent review pass after the first fix
+  found no further issues. What's still open: the 300px cap is a
+  reasonable, measured value for this app's real data, not a
+  mathematically derived one — a future dealer feed with an unusually
+  long make name would rely on the ellipsis truncation (verified to
+  activate, not verified to look good at every possible length).
+  `above-and-beyond-candidates.md`'s G3 entry updated to mark this
+  fixed too.

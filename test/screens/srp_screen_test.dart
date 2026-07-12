@@ -425,14 +425,83 @@ void main() {
   );
 
   testWidgets(
+    'filter dropdowns do not overflow at narrow viewport widths -- DropdownButton reserves '
+    "width for its widest item across ALL options (e.g. \"All body styles\"), not just the "
+    'currently selected value, so even a short selection can overflow once the dropdown is '
+    'alone on its own Wrap line at a narrow width',
+    (tester) async {
+      // 220px -- confirmed reproducible (measured directly: overflows by
+      // 78px at this width on the un-fixed widget) without needing
+      // pagination controls in view at all, keeping this test focused on
+      // the dropdowns alone.
+      tester.view.physicalSize = const Size(220, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final inventory = Inventory(vehicles: [vehicle(id: 1)], dealerName: 'Test Dealer');
+      await tester.pumpWidget(
+        _wrap(
+          ProviderScope(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              inventoryProvider.overrideWith((ref) => Future.value(inventory)),
+            ],
+            child: const SrpScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'filter dropdowns stay compact (do not each claim the full row width) at a wide viewport '
+    '-- isExpanded lets a DropdownButton shrink to fit a narrow Wrap line, but without an '
+    'upper bound it also greedily fills a wide one, stacking all four vertically instead of '
+    'sitting side by side the way they did before the narrow-width fix',
+    (tester) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final inventory = Inventory(vehicles: [vehicle(id: 1)], dealerName: 'Test Dealer');
+      await tester.pumpWidget(
+        _wrap(
+          ProviderScope(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              inventoryProvider.overrideWith((ref) => Future.value(inventory)),
+            ],
+            child: const SrpScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Measured naturally (unbounded) with realistic longer data: make
+      // ~234px, body style ~266px, price dropdowns ~169px each -- 300px is
+      // comfortably above all four, so this asserts "did not expand to
+      // fill the whole 1168px content width" without being so tight it'd
+      // fail on legitimate content.
+      for (final key in ['make-filter', 'body-filter', 'min-price-filter', 'max-price-filter']) {
+        final width = tester.getRect(find.byKey(Key(key))).width;
+        expect(width, lessThanOrEqualTo(300),
+            reason: '$key claimed $width px -- expected a bounded width, not the full row');
+      }
+    },
+  );
+
+  testWidgets(
     'pagination controls do not overflow at narrow viewport widths (G3) -- Previous/Next '
     'buttons plus the page-count text have a combined natural width (measured ~400px) that '
     'exceeds what many phone viewports leave available after the 16px page padding',
     (tester) async {
       // 320px -- confirmed the pre-fix Row overflowed by 118px here; narrow
-      // enough to reproduce G3 without also triggering an unrelated,
-      // pre-existing DropdownButton overflow that shows up below ~300px
-      // (the filter bar's own narrow-width bug, out of scope for this fix).
+      // enough to reproduce G3 without also triggering a separate
+      // DropdownButton overflow below ~300px, fixed in Task 30 (see the
+      // "filter dropdowns do not overflow" test below).
       tester.view.physicalSize = const Size(320, 800);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
