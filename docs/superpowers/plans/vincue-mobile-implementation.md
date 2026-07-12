@@ -443,6 +443,30 @@ step.
   passes — it exercises the provider directly, not the UI toggle. Full
   suite (242 tests) + `flutter analyze` clean.
 
+- [x] **25. Header/title font matched to the logo (Anton)** —
+  above-and-beyond polish, not core parity: JP asked for a font that
+  resembles the "SUMMIT SUBARU" lettering in the logo, matched to
+  **Anton** (Google Fonts / SIL OFL, free to bundle, no licensing
+  concern) after visually inspecting the logo's bold condensed
+  all-caps letterforms. Scoped to headline/title `TextTheme` roles only
+  (`headlineSmall`, `titleLarge`, `titleMedium`) — not applied app-wide,
+  since a display font hurts readability in dense areas (prices,
+  descriptions, spec tables); body/label roles keep the default font.
+  `assets/fonts/Anton-Regular.ttf` (downloaded from Google Fonts'
+  `fonts.gstatic.com`) declared under `pubspec.yaml`'s `fonts:` section.
+  `lib/theme/app_theme.dart`'s `_base()` now builds a Material 3 default
+  `ThemeData` first, then `.copyWith(textTheme: ...)` overrides only the
+  font-family on those three roles, preserving every other
+  Material-3-computed property (size, weight, spacing) for each role.
+  Applied to both light and dark `ThemeData` (dark is currently
+  force-disabled per Task 24, but kept consistent for whenever it's
+  re-enabled). **Test first:** `test/theme/app_theme_test.dart` — asserts
+  `headlineSmall`/`titleLarge`/`titleMedium`.`fontFamily` is `'Anton'` on
+  both `AppTheme.light()` and `AppTheme.dark()`, and that
+  `bodyMedium`/`bodySmall`/`bodyLarge` are explicitly NOT `'Anton'`
+  (confirms the scope boundary, not just the positive case). Full suite
+  (245 tests) + `flutter analyze` clean.
+
 ## End-to-end verification (once Tasks 1–13 done)
 
 `flutter run -d web-server --web-port=8765`, open `http://localhost:8765`

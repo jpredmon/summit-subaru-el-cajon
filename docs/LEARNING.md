@@ -828,3 +828,27 @@ Both of these were flagged by the required per-task review, verified against
   the same way the real app does, as long as the asset is declared in
   `pubspec.yaml` and present on disk — no special test-only asset
   mocking needed.
+
+## 2026-07-12 — Custom fonts + partial `TextTheme` override
+
+- **Bundling a custom font needs no package** (no `google_fonts`) — just
+  the actual `.ttf`/`.otf` file declared under `pubspec.yaml`'s `fonts:`
+  section (`family:` name + a list of `fonts:` file paths, optionally
+  with `weight`/`style` for other cuts of the same family), same
+  mechanism as the `assets:` section used for the logo image. Google
+  Fonts' own CSS API (`fonts.googleapis.com/css2?family=<Name>`) points
+  at the real static file on `fonts.gstatic.com` — fetching that CSS with
+  a plain-text `User-Agent` (rather than a modern browser one) returns a
+  `.ttf` link instead of `.woff2`, which is what Flutter's font-bundling
+  actually wants.
+- **`ThemeData.copyWith` + a base `TextTheme.copyWith` is how to override
+  only *some* text styles' font family, not the whole app.** Applying
+  Anton (matched to the logo's bold condensed lettering) to every string
+  in the app would hurt readability in dense areas (prices, descriptions,
+  spec tables) — a display font is meant for short, prominent text.
+  Building `ThemeData` once with Material 3's defaults, then
+  `.copyWith(textTheme: base.textTheme.copyWith(headlineSmall: ...,
+  titleLarge: ..., titleMedium: ...))` overrides only the font-family on
+  those three roles while every other property (size, weight, letter
+  spacing) Material 3 already computed for that role stays correct —
+  much safer than hand-building a whole custom `TextTheme` from scratch.

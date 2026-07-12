@@ -30,9 +30,8 @@ class AppTheme {
 
   static ThemeData _base(ColorScheme scheme) {
     final radius = BorderRadius.circular(kCardRadius);
-    return ThemeData(
-      useMaterial3: true,
-      colorScheme: scheme,
+    final base = ThemeData(useMaterial3: true, colorScheme: scheme);
+    return base.copyWith(
       scaffoldBackgroundColor: scheme.brightness == Brightness.dark
           ? const Color(0xFF0F172A)
           : const Color(0xFFF8FAFC),
@@ -42,6 +41,18 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         border: OutlineInputBorder(borderRadius: radius),
+      ),
+      // Matches the "SUMMIT SUBARU" lettering in the header logo (bold
+      // condensed display face) -- applied only to headline/title roles,
+      // not body/label text: a display font like this hurts readability
+      // in dense areas (prices, descriptions, spec tables), so it's scoped
+      // to short, prominent text (vehicle titles, section headers) via
+      // Flutter's own TextTheme roles rather than touching individual
+      // widgets.
+      textTheme: base.textTheme.copyWith(
+        headlineSmall: base.textTheme.headlineSmall?.copyWith(fontFamily: 'Anton'),
+        titleLarge: base.textTheme.titleLarge?.copyWith(fontFamily: 'Anton'),
+        titleMedium: base.textTheme.titleMedium?.copyWith(fontFamily: 'Anton'),
       ),
     );
   }

@@ -69,6 +69,11 @@ flutter:
   assets:
     - assets/images/summit_subaru_logo.png
 
+  fonts:
+    - family: Anton
+      fonts:
+        - asset: assets/fonts/Anton-Regular.ttf
+
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 
