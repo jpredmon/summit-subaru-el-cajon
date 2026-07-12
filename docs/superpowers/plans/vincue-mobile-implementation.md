@@ -816,3 +816,688 @@ paging/URL-sync work, VDP reachable with all four states correct.
   `lib/theme/breakpoints.dart`) before a fix is attempted. **Deliberately
   deferred** (JP's call, given session time/battery constraints during the
   device pass) — not started, no test written yet.
+  **Superseded by Tasks 33-35 below**, per the approved design
+  `docs/superpowers/specs/2026-07-12-filter-bar-tiers-and-logo-visibility-design.md`
+  — that design goes further than a single-cap fix (per-tier column counts
+  plus a collapsible compact mode), so this entry's narrower framing is
+  kept for history but the actual fix is tracked under the new task numbers.
+
+- [ ] **33. Content-driven dropdown width (replaces the flat 300px cap)** —
+  per `docs/superpowers/specs/2026-07-12-filter-bar-tiers-and-logo-visibility-design.md`'s
+  "Width mechanism" section. Each filter dropdown should render only as
+  wide as its *current selection's* text actually needs, not a flat 300px
+  regardless of content (Task 30's fix, still the state on `master`).
+  **First idea tried and empirically disproven before writing this
+  task:** `DropdownButton.selectedItemBuilder` sounds like it should do
+  this (a separate widget just for the closed state), but a probe test
+  proved Flutter renders every `selectedItemBuilder` item inside an
+  `IndexedStack`, which sizes itself to the *largest* child among all of
+  them — a short ("A") and a long ("This Is A Much Longer Selection
+  Value") selection both measured **621.5px**, identical, confirming it
+  reserves the widest-possible-item width exactly like the default
+  mechanism does. **What actually works:** `isExpanded: true` never looks
+  at other items' widths — it just fills whatever width its parent gives
+  it (already relied on by Task 30). So: measure the current selection's
+  real text width via `TextPainter`, add a fixed chrome allowance for the
+  dropdown's arrow icon + internal padding — measured empirically at
+  **24px** (a single-item `DropdownButton`'s rendered width minus its
+  `Text` child's raw `TextPainter` width) — and size a `SizedBox` to
+  exactly that, wrapping the `isExpanded: true` `DropdownButton` inside it.
+
+  **Files:**
+  - Modify: `lib/screens/srp_screen.dart` (`_FilterBar` class, lines
+    ~269-399 on `master` as of Task 30)
+  - Test: `test/screens/srp_screen_test.dart`
+
+  **Step 1 — write the failing tests**, new group in
+  `test/screens/srp_screen_test.dart` (add near the existing "regression:
+  filter state restored..." group, reusing its `pumpWithInventory`-style
+  pattern):
+
+  ```dart
+  group('dropdown width tracks selected content (Task 33)', () {
+    testWidgets('a short make selection renders narrower than a long one', (tester) async {
+      final shortInventory = Inventory(vehicles: [vehicle(id: 1, make: 'Kia')], dealerName: 'Test Dealer');
+      await tester.pumpWidget(
+        _wrap(
+          ProviderScope(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              inventoryProvider.overrideWith((ref) => Future.value(shortInventory)),
+            ],
+            child: const SrpScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      var context = tester.element(find.byType(SrpScreen));
+      ProviderScope.containerOf(context).read(srpStateProvider.notifier).restoreFrom(
+            const SrpFilterState(filters: VehicleFilters(make: 'Kia')),
+          );
+      await tester.pumpAndSettle();
+      final shortWidth = tester.getSize(find.byKey(const Key('make-filter'))).width;
+
+      final longInventory = Inventory(vehicles: [vehicle(id: 1, make: 'Volkswagen')], dealerName: 'Test Dealer');
+      await tester.pumpWidget(
+        _wrap(
+          ProviderScope(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              inventoryProvider.overrideWith((ref) => Future.value(longInventory)),
+            ],
+            child: const SrpScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      context = tester.element(find.byType(SrpScreen));
+      ProviderScope.containerOf(context).read(srpStateProvider.notifier).restoreFrom(
+            const SrpFilterState(filters: VehicleFilters(make: 'Volkswagen')),
+          );
+      await tester.pumpAndSettle();
+      final longWidth = tester.getSize(find.byKey(const Key('make-filter'))).width;
+
+      expect(shortWidth, lessThan(longWidth));
+    });
+
+    testWidgets('an unusually long make is clamped to the max width, not left to overflow', (tester) async {
+      const pathologicalMake = 'A Pathologically Long Make Name That Should Never Really Occur';
+      final inventory = Inventory(vehicles: [vehicle(id: 1, make: pathologicalMake)], dealerName: 'Test Dealer');
+      await tester.pumpWidget(
+        _wrap(
+          ProviderScope(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              inventoryProvider.overrideWith((ref) => Future.value(inventory)),
+            ],
+            child: const SrpScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final context = tester.element(find.byType(SrpScreen));
+      ProviderScope.containerOf(context).read(srpStateProvider.notifier).restoreFrom(
+            const SrpFilterState(filters: VehicleFilters(make: pathologicalMake)),
+          );
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(tester.getSize(find.byKey(const Key('make-filter'))).width, lessThanOrEqualTo(234));
+    });
+  });
+  ```
+
+  Run: `flutter test test/screens/srp_screen_test.dart --plain-name "dropdown width tracks selected content"`
+  Expected: FAIL — both dropdowns currently render at exactly 300px
+  (Task 30's flat cap), so `shortWidth` and `longWidth` are equal, failing
+  `lessThan`.
+
+  **Step 2 — implement.** In `lib/screens/srp_screen.dart`, replace the
+  `_dropdownMaxWidth` constant and its four `ConstrainedBox` usages. Add
+  above the `_FilterBar` class:
+
+  ```dart
+  double _dropdownContentWidth(String text, TextStyle style, {required double maxWidth}) {
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      textDirection: TextDirection.ltr,
+      maxLines: 1,
+    )..layout();
+    return (painter.width + _dropdownChromeAllowance).clamp(_dropdownMinWidth, maxWidth);
+  }
+
+  // Measured empirically (not guessed): a single-item DropdownButton's
+  // rendered width minus its Text child's raw TextPainter width, for the
+  // arrow icon + internal padding. See the design spec's probe test.
+  const double _dropdownChromeAllowance = 24;
+  const double _dropdownMinWidth = 72;
+  ```
+
+  Replace the `_FilterBar` class's `_dropdownMaxWidth` constant with three
+  per-field constants (same measured values Task 30 already established):
+
+  ```dart
+  static const double _makeMaxWidth = 234;
+  static const double _bodyMaxWidth = 266;
+  static const double _priceMaxWidth = 169;
+  ```
+
+  Then in `build`, compute a shared `dropdownStyle` once and replace each
+  `ConstrainedBox(constraints: const BoxConstraints(maxWidth:
+  _dropdownMaxWidth))` with a `SizedBox(width: ...)` sized via
+  `_dropdownContentWidth`, and pass `style: dropdownStyle` to each
+  `DropdownButton` (so the actually-rendered text style matches what was
+  measured):
+
+  ```dart
+  final dropdownStyle = Theme.of(context).textTheme.bodyLarge!;
+  final makeValue = _validValue(filters.make, options.makes);
+  final bodyValue = _validValue(filters.body, options.bodyStyles);
+  final minPriceValue = _validValue(filters.minPrice, minPriceItems);
+  final maxPriceValue = _validValue(filters.maxPrice, maxPriceItems);
+  final makeText = makeValue ?? 'All makes';
+  final bodyText = bodyValue?.displayName ?? 'All body styles';
+  final minPriceText = minPriceValue != null ? formatPrice(minPriceValue) : 'Min price';
+  final maxPriceText = maxPriceValue != null ? formatPrice(maxPriceValue) : 'Max price';
+  ```
+
+  Make dropdown's wrapper becomes:
+
+  ```dart
+  Semantics(
+    label: 'Make',
+    child: SizedBox(
+      width: _dropdownContentWidth(makeText, dropdownStyle, maxWidth: _makeMaxWidth),
+      child: DropdownButton<String?>(
+        isExpanded: true,
+        style: dropdownStyle,
+        key: const Key('make-filter'),
+        value: makeValue,
+        items: [
+          const DropdownMenuItem<String?>(value: null, child: Text('All makes', overflow: TextOverflow.ellipsis)),
+          ...options.makes.map(
+            (make) => DropdownMenuItem<String?>(value: make, child: Text(make, overflow: TextOverflow.ellipsis)),
+          ),
+        ],
+        onChanged: notifier.setMake,
+      ),
+    ),
+  ),
+  ```
+
+  Apply the identical pattern to body style (`_bodyMaxWidth`, `bodyText`,
+  `bodyValue`), min price (`_priceMaxWidth`, `minPriceText`,
+  `minPriceValue`, items built from `minPriceItems`), and max price
+  (`_priceMaxWidth`, `maxPriceText`, `maxPriceValue`, items from
+  `maxPriceItems`) — each keeps its existing `items` list and `onChanged`
+  callback unchanged, only the wrapper (`ConstrainedBox` → `SizedBox`) and
+  the added `style:`/computed `value:`/`width:` change.
+
+  **Step 3 — run the tests, confirm GREEN:**
+  `flutter test test/screens/srp_screen_test.dart` (full file, not just
+  the new group — confirms no regression in the restored-filter-state
+  tests, which also read `make-filter`'s `.value`).
+
+  **Step 4 — full suite + analyze:** `flutter test` and `flutter analyze`,
+  both clean.
+
+  **Step 5 — confidence score** (per this project's process, written
+  after implementation): cover what's uncertain about `TextPainter`
+  measurement matching real rendering exactly (font hinting/kerning could
+  differ marginally from the actual `DropdownButton`'s internal text
+  layout — the clamp + ellipsis safety net covers any small mismatch), and
+  whether `dropdownStyle` (`bodyLarge`) is the right style to standardize
+  on visually (compare against the pre-Task-30 default `DropdownButton`
+  style before this task, and adjust if it looks visually different from
+  today's filter bar).
+
+  **Step 6 — commit:**
+  ```bash
+  git add lib/screens/srp_screen.dart test/screens/srp_screen_test.dart
+  git commit -m "fix: size filter dropdowns to their content, not a flat 300px cap (Task 33)"
+  ```
+
+  **New concept for LEARNING.md:** `TextPainter`-based intrinsic-width
+  measurement, and *why* `DropdownButton.selectedItemBuilder` doesn't do
+  this for free (`IndexedStack` sizes to its largest child, not the
+  currently-shown one) — include the wrong-turn itself as the lesson:
+  measure framework behavior directly with a throwaway probe test rather
+  than trusting what an API name implies.
+
+- [ ] **34. Tiered filter bar layout (4-in-a-row / 2-per-row / collapsible)** —
+  per the design spec's "Filter bar layout per tier" section. Builds on
+  Task 33's content-driven dropdown widths (each dropdown is already sized
+  to its own content; this task only changes how the four are *arranged*).
+
+  **Files:**
+  - Modify: `lib/screens/srp_screen.dart` (`_FilterBar` — convert from
+    `StatelessWidget` to `StatefulWidget`, since compact mode needs local
+    open/closed state)
+  - Test: `test/screens/srp_screen_test.dart`
+
+  **Note on widths chosen:** the design spec's testing section asks for
+  exact-boundary tests (599/600/839/840px); those boundaries are already
+  exhaustively tested for `windowSizeClassOf` itself in
+  `test/theme/breakpoints_test.dart` (Task 17), so re-testing the same
+  boundary values here would only be redundant with that. These tests use
+  representative widths per tier instead (1400/700/360) to confirm each
+  tier's actual *rendering* — same choice Task 18's VDP two-pane tests
+  made (1000px/700px, not 839/840).
+
+  **Step 1 — write the failing tests:**
+
+  ```dart
+  group('filter bar tiers (Task 34)', () {
+    Future<void> pumpAt(WidgetTester tester, double width) async {
+      tester.view.physicalSize = Size(width, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      final inventory = Inventory(vehicles: [vehicle(id: 1)], dealerName: 'Test Dealer');
+      await tester.pumpWidget(
+        _wrap(
+          ProviderScope(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              inventoryProvider.overrideWith((ref) => Future.value(inventory)),
+            ],
+            child: const SrpScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('expanded (1400px): all 4 dropdowns share one row, no Apply-filters button', (tester) async {
+      await pumpAt(tester, 1400);
+      expect(find.byKey(const Key('apply-filters-toggle')), findsNothing);
+      final makeTop = tester.getTopLeft(find.byKey(const Key('make-filter'))).dy;
+      final bodyTop = tester.getTopLeft(find.byKey(const Key('body-filter'))).dy;
+      final maxPriceTop = tester.getTopLeft(find.byKey(const Key('max-price-filter'))).dy;
+      expect(makeTop, equals(bodyTop));
+      expect(makeTop, equals(maxPriceTop));
+    });
+
+    testWidgets('medium (700px): make+body share a row, min+max price share a second row', (tester) async {
+      await pumpAt(tester, 700);
+      expect(find.byKey(const Key('apply-filters-toggle')), findsNothing);
+      final makeTop = tester.getTopLeft(find.byKey(const Key('make-filter'))).dy;
+      final bodyTop = tester.getTopLeft(find.byKey(const Key('body-filter'))).dy;
+      final minPriceTop = tester.getTopLeft(find.byKey(const Key('min-price-filter'))).dy;
+      expect(makeTop, equals(bodyTop));
+      expect(minPriceTop, greaterThan(makeTop));
+    });
+
+    testWidgets('compact (360px): dropdowns start hidden behind an Apply-filters button', (tester) async {
+      await pumpAt(tester, 360);
+      expect(find.byKey(const Key('apply-filters-toggle')), findsOneWidget);
+      expect(find.text('Apply filters'), findsOneWidget);
+      expect(find.byKey(const Key('make-filter')), findsNothing);
+    });
+
+    testWidgets('compact (360px): tapping Apply filters reveals all 4 stacked, live-filters, and folds back away', (tester) async {
+      await pumpAt(tester, 360);
+
+      await tester.tap(find.byKey(const Key('apply-filters-toggle')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('make-filter')), findsOneWidget);
+      expect(find.byKey(const Key('body-filter')), findsOneWidget);
+      final makeTop = tester.getTopLeft(find.byKey(const Key('make-filter'))).dy;
+      final bodyTop = tester.getTopLeft(find.byKey(const Key('body-filter'))).dy;
+      expect(bodyTop, greaterThan(makeTop));
+
+      // Live filtering unchanged: selecting a make while the panel is open
+      // updates the grid immediately, no separate commit step.
+      await tester.tap(find.byKey(const Key('make-filter')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Honda').last);
+      await tester.pumpAndSettle();
+      final context = tester.element(find.byType(SrpScreen));
+      expect(
+        ProviderScope.containerOf(context).read(srpStateProvider).filters.make,
+        'Honda',
+      );
+
+      await tester.tap(find.byKey(const Key('apply-filters-toggle')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('make-filter')), findsNothing);
+    });
+  });
+  ```
+
+  Run: `flutter test test/screens/srp_screen_test.dart --plain-name "filter bar tiers"`
+  Expected: FAIL — `_FilterBar` currently renders one `Wrap` at every
+  width with no `apply-filters-toggle` key at all, so the compact tests
+  fail on `findsOneWidget`/`findsNothing` and the expanded/medium tests
+  fail because `Wrap`'s reflow doesn't guarantee the exact row groupings
+  asserted (may pass by accident at some widths — if so, note that in the
+  confidence write-up as something to re-verify once the real
+  implementation lands, not just trust the accidental pass).
+
+  **Step 2 — implement.** Convert `_FilterBar` to a `StatefulWidget`:
+
+  ```dart
+  class _FilterBar extends StatefulWidget {
+    const _FilterBar({required this.filters, required this.options, required this.notifier});
+
+    final VehicleFilters filters;
+    final FilterOptions options;
+    final SrpStateNotifier notifier;
+
+    @override
+    State<_FilterBar> createState() => _FilterBarState();
+  }
+
+  class _FilterBarState extends State<_FilterBar> {
+    bool _compactFiltersOpen = false;
+
+    static const double _dropdownChromeAllowance = 24;
+    static const double _dropdownMinWidth = 72;
+    static const double _makeMaxWidth = 234;
+    static const double _bodyMaxWidth = 266;
+    static const double _priceMaxWidth = 169;
+
+    @override
+    Widget build(BuildContext context) {
+      final windowSizeClass = windowSizeClassOf(MediaQuery.sizeOf(context).width);
+      final make = _buildMakeDropdown(context);
+      final body = _buildBodyDropdown(context);
+      final minPrice = _buildMinPriceDropdown(context);
+      final maxPrice = _buildMaxPriceDropdown(context);
+
+      switch (windowSizeClass) {
+        case WindowSizeClass.expanded:
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [make, const SizedBox(width: 12), body, const SizedBox(width: 12), minPrice, const SizedBox(width: 12), maxPrice],
+          );
+        case WindowSizeClass.medium:
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(mainAxisSize: MainAxisSize.min, children: [make, const SizedBox(width: 12), body]),
+              const SizedBox(height: 12),
+              Row(mainAxisSize: MainAxisSize.min, children: [minPrice, const SizedBox(width: 12), maxPrice]),
+            ],
+          );
+        case WindowSizeClass.compact:
+          if (!_compactFiltersOpen) {
+            return Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                key: const Key('apply-filters-toggle'),
+                onPressed: () => setState(() => _compactFiltersOpen = true),
+                child: const Text('Apply filters'),
+              ),
+            );
+          }
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              make,
+              const SizedBox(height: 12),
+              body,
+              const SizedBox(height: 12),
+              minPrice,
+              const SizedBox(height: 12),
+              maxPrice,
+              const SizedBox(height: 12),
+              TextButton(
+                key: const Key('apply-filters-toggle'),
+                onPressed: () => setState(() => _compactFiltersOpen = false),
+                child: const Text('Hide filters'),
+              ),
+            ],
+          );
+      }
+    }
+
+    double _dropdownContentWidth(String text, TextStyle style, {required double maxWidth}) {
+      final painter = TextPainter(
+        text: TextSpan(text: text, style: style),
+        textDirection: TextDirection.ltr,
+        maxLines: 1,
+      )..layout();
+      return (painter.width + _dropdownChromeAllowance).clamp(_dropdownMinWidth, maxWidth);
+    }
+
+    static T? _validValue<T>(T? candidate, List<T> validOptions) {
+      return candidate != null && validOptions.contains(candidate) ? candidate : null;
+    }
+
+    Widget _buildMakeDropdown(BuildContext context) {
+      final style = Theme.of(context).textTheme.bodyLarge!;
+      final value = _validValue(widget.filters.make, widget.options.makes);
+      final text = value ?? 'All makes';
+      return Semantics(
+        label: 'Make',
+        child: SizedBox(
+          width: _dropdownContentWidth(text, style, maxWidth: _makeMaxWidth),
+          child: DropdownButton<String?>(
+            isExpanded: true,
+            style: style,
+            key: const Key('make-filter'),
+            value: value,
+            items: [
+              const DropdownMenuItem<String?>(value: null, child: Text('All makes', overflow: TextOverflow.ellipsis)),
+              ...widget.options.makes.map(
+                (make) => DropdownMenuItem<String?>(value: make, child: Text(make, overflow: TextOverflow.ellipsis)),
+              ),
+            ],
+            onChanged: widget.notifier.setMake,
+          ),
+        ),
+      );
+    }
+
+    Widget _buildBodyDropdown(BuildContext context) {
+      final style = Theme.of(context).textTheme.bodyLarge!;
+      final value = _validValue(widget.filters.body, widget.options.bodyStyles);
+      final text = value?.displayName ?? 'All body styles';
+      return Semantics(
+        label: 'Body style',
+        child: SizedBox(
+          width: _dropdownContentWidth(text, style, maxWidth: _bodyMaxWidth),
+          child: DropdownButton<BodyCategory?>(
+            isExpanded: true,
+            style: style,
+            key: const Key('body-filter'),
+            value: value,
+            items: [
+              const DropdownMenuItem<BodyCategory?>(
+                value: null,
+                child: Text('All body styles', overflow: TextOverflow.ellipsis),
+              ),
+              ...widget.options.bodyStyles.map(
+                (body) => DropdownMenuItem<BodyCategory?>(
+                  value: body,
+                  child: Text(body.displayName, overflow: TextOverflow.ellipsis),
+                ),
+              ),
+            ],
+            onChanged: widget.notifier.setBody,
+          ),
+        ),
+      );
+    }
+
+    Widget _buildMinPriceDropdown(BuildContext context) {
+      final style = Theme.of(context).textTheme.bodyLarge!;
+      final minPriceItems = minPriceOptions(widget.filters.maxPrice);
+      final value = _validValue(widget.filters.minPrice, minPriceItems);
+      final text = value != null ? formatPrice(value) : 'Min price';
+      return Semantics(
+        label: 'Minimum price',
+        child: SizedBox(
+          width: _dropdownContentWidth(text, style, maxWidth: _priceMaxWidth),
+          child: DropdownButton<double?>(
+            isExpanded: true,
+            style: style,
+            key: const Key('min-price-filter'),
+            value: value,
+            items: [
+              const DropdownMenuItem<double?>(value: null, child: Text('Min price', overflow: TextOverflow.ellipsis)),
+              ...minPriceItems.map(
+                (threshold) => DropdownMenuItem<double?>(
+                  value: threshold,
+                  child: Text(formatPrice(threshold), overflow: TextOverflow.ellipsis),
+                ),
+              ),
+            ],
+            onChanged: widget.notifier.setMinPrice,
+          ),
+        ),
+      );
+    }
+
+    Widget _buildMaxPriceDropdown(BuildContext context) {
+      final style = Theme.of(context).textTheme.bodyLarge!;
+      final maxPriceItems = maxPriceOptions(widget.filters.minPrice);
+      final value = _validValue(widget.filters.maxPrice, maxPriceItems);
+      final text = value != null ? formatPrice(value) : 'Max price';
+      return Semantics(
+        label: 'Maximum price',
+        child: SizedBox(
+          width: _dropdownContentWidth(text, style, maxWidth: _priceMaxWidth),
+          child: DropdownButton<double?>(
+            isExpanded: true,
+            style: style,
+            key: const Key('max-price-filter'),
+            value: value,
+            items: [
+              const DropdownMenuItem<double?>(value: null, child: Text('Max price', overflow: TextOverflow.ellipsis)),
+              ...maxPriceItems.map(
+                (threshold) => DropdownMenuItem<double?>(
+                  value: threshold,
+                  child: Text(formatPrice(threshold), overflow: TextOverflow.ellipsis),
+                ),
+              ),
+            ],
+            onChanged: widget.notifier.setMaxPrice,
+          ),
+        ),
+      );
+    }
+  }
+  ```
+
+  `_validValue` (moved unchanged from the old `_FilterBar` StatelessWidget,
+  now a static method on `_FilterBarState`) and the constants
+  (`_dropdownChromeAllowance`, `_dropdownMinWidth`, `_makeMaxWidth`,
+  `_bodyMaxWidth`, `_priceMaxWidth`) shown in the class body above are the
+  same ones Task 33 introduced at the top level — moved onto this class
+  once `_FilterBar` becomes stateful, not duplicated.
+
+  **Step 3 — run the tests, confirm GREEN:**
+  `flutter test test/screens/srp_screen_test.dart`
+
+  **Step 4 — full suite + analyze:** `flutter test` and `flutter analyze`.
+
+  **Step 5 — confidence score:** cover whether `Row`'s non-wrapping
+  behavior at `expanded` could overflow for an unusually data-heavy
+  dealer (all 4 dropdowns near their max-width caps simultaneously —
+  234+266+169+169+36(spacing)=874px, technically wider than the 840px
+  `expanded` threshold's minimum) — note this as an accepted, named
+  trade-off (same treatment as prior tasks' documented `Wrap`/masonry
+  quirks) rather than silently risking it, since real dealer data is
+  expected to be far narrower than the caps in practice.
+
+  **Step 6 — commit:**
+  ```bash
+  git add lib/screens/srp_screen.dart test/screens/srp_screen_test.dart
+  git commit -m "feat: tiered filter bar layout - 4-in-a-row/2-per-row/collapsible (Task 34)"
+  ```
+
+- [ ] **35. Hide header logo below 600px, single reversible switch** — per
+  the design spec's "Header logo visibility" section. **JP's explicit
+  note:** he may want to keep the logo at all sizes after seeing it
+  rendered, or shrink it instead of hiding it — implementation must make
+  this a single, localized branch point, not scattered logic, so reversing
+  the decision later is a one-line change.
+
+  **Files:**
+  - Modify: `lib/widgets/app_shell.dart`
+  - Test: `test/widgets/app_shell_test.dart`
+
+  **Step 1 — write the failing test**, alongside the existing logo-present
+  assertions in `test/widgets/app_shell_test.dart`:
+
+  ```dart
+  testWidgets('logo is hidden below the compact breakpoint (600px)', (tester) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(/* same ProviderScope/AppShell harness the existing logo tests use */);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(Image), findsNothing);
+    // Accessibility is preserved even though the logo is visually hidden --
+    // the dealer name is still announced via Semantics.
+    expect(find.bySemanticsLabel('Test Dealer'), findsOneWidget);
+  });
+
+  testWidgets('logo is still shown at 600px and above', (tester) async {
+    tester.view.physicalSize = const Size(600, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(/* same harness */);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(Image), findsOneWidget);
+  });
+  ```
+
+  (Match the exact `ProviderScope`/`sharedPreferencesProvider`/
+  `dealerNameProvider` override pattern the existing tests in this file
+  already use — read the file's current top-of-file setup before writing
+  these in, rather than guessing the harness shape.)
+
+  Run: `flutter test test/widgets/app_shell_test.dart --plain-name "hidden below the compact breakpoint"`
+  Expected: FAIL — the logo currently always renders (just shrinks per
+  `logoSizingFor`), so `find.byType(Image)` finds one even at 360px.
+
+  **Step 2 — implement.** In `lib/widgets/app_shell.dart`, add a single
+  top-level switch and branch on it once:
+
+  ```dart
+  /// Single rollback point: JP may decide to keep the logo at every width
+  /// (or shrink it further instead of hiding it) after seeing this
+  /// rendered. Flip to `false` to restore the logo at every width with no
+  /// other code changes needed.
+  const bool kHideLogoAtCompact = true;
+  ```
+
+  In `AppShell.build`, after computing `sizing`:
+
+  ```dart
+  final windowSizeClass = windowSizeClassOf(MediaQuery.sizeOf(context).width);
+  final sizing = logoSizingFor(windowSizeClass);
+  final hideLogo = kHideLogoAtCompact && windowSizeClass == WindowSizeClass.compact;
+
+  return Scaffold(
+    appBar: AppBar(
+      toolbarHeight: hideLogo ? kToolbarHeight : sizing.toolbarHeight,
+      centerTitle: true,
+      title: hideLogo
+          ? Semantics(label: dealerName, child: const SizedBox.shrink())
+          : Semantics(
+              label: dealerName,
+              child: Image.asset(
+                'assets/images/summit_subaru_logo.png',
+                height: sizing.logoHeight,
+                fit: BoxFit.contain,
+              ),
+            ),
+    ),
+    body: ErrorBoundary(child: child),
+  );
+  ```
+
+  (`Semantics(label: dealerName, child: SizedBox.shrink())` when hidden —
+  not an empty `title: null` — so the dealer-name screen-reader
+  announcement Task 22 established is preserved even though nothing is
+  shown visually; this is what makes the second new test above pass.)
+
+  **Step 3 — run the tests, confirm GREEN:**
+  `flutter test test/widgets/app_shell_test.dart`
+
+  **Step 4 — full suite + analyze:** `flutter test` and `flutter analyze`
+  (this touches shared chrome, so also spot-check
+  `test/router/app_router_test.dart`'s logo-across-navigation regression
+  test still passes at whatever width it renders at).
+
+  **Step 5 — confidence score:** cover whether `kToolbarHeight` (Material's
+  default 56px) looks visually right once the logo disappears — JP should
+  eyeball this on a real narrow viewport before it's considered final,
+  same as the "may want to keep/shrink instead" rollback note above.
+
+  **Step 6 — commit:**
+  ```bash
+  git add lib/widgets/app_shell.dart test/widgets/app_shell_test.dart
+  git commit -m "feat: hide header logo below 600px, single reversible switch (Task 35)"
+  ```
+
