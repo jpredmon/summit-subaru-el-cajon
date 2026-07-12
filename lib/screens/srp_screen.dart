@@ -1,5 +1,9 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 import '../models/body_category.dart';
 import '../models/filter_vehicles.dart';
@@ -15,18 +19,42 @@ import '../utils/format.dart';
 import '../widgets/inventory_error_view.dart';
 import '../widgets/skeleton.dart';
 import '../widgets/vehicle_card.dart';
+import '../widgets/vehicle_photo.dart';
 
 const int _pageSize = 12;
 
+/// The 16px gutter shared by the real card grid and the skeleton loading
+/// grid, so the two can't silently drift apart the way two independent `16`
+/// literals could.
+const double _srpGridSpacing = 16;
+
+/// [SliverSimpleGridDelegateWithMaxCrossAxisExtent.getCrossAxisCount] (unlike
+/// the Flutter SDK's own [SliverGridDelegateWithMaxCrossAxisExtent], which
+/// this replaced) doesn't clamp its result to at least 1 -- a transient
+/// zero-or-negative `crossAxisExtent` (e.g. a zero-width layout pass during a
+/// resize) would divide by zero downstream in `RenderSliverMasonryGrid`.
+/// Match the SDK's own guard here.
+class _ClampedMaxCrossAxisExtentDelegate extends SliverSimpleGridDelegateWithMaxCrossAxisExtent {
+  const _ClampedMaxCrossAxisExtentDelegate({required super.maxCrossAxisExtent});
+
+  @override
+  int getCrossAxisCount(SliverConstraints constraints, double crossAxisSpacing) {
+    return math.max(1, super.getCrossAxisCount(constraints, crossAxisSpacing));
+  }
+}
+
 /// Shared by the real card grid and the skeleton loading grid so the loading
-/// placeholder lays out with the identical column count and cell size.
-const SliverGridDelegateWithMaxCrossAxisExtent _srpGridDelegate =
-    SliverGridDelegateWithMaxCrossAxisExtent(
-  maxCrossAxisExtent: 280,
-  mainAxisExtent: 340,
-  crossAxisSpacing: 16,
-  mainAxisSpacing: 16,
-);
+/// placeholder lays out with the identical column count.
+///
+/// A masonry layout, not a fixed-cell [GridView] -- [VehicleCard]'s photo
+/// scales proportionally with column width (its `AspectRatio(4/3)`) while
+/// its text block does not (fixed line count, occasionally wrapping an
+/// extra line at narrow widths), so no single fixed cell height or
+/// `childAspectRatio` can fit every card at every column width without
+/// either leaving a gap (too tall) or overflowing (too short). Each card
+/// sizing to its own real content height sidesteps that entirely.
+const _ClampedMaxCrossAxisExtentDelegate _srpGridDelegate =
+    _ClampedMaxCrossAxisExtentDelegate(maxCrossAxisExtent: 280);
 
 /// Search Results Page — grid of active inventory, wired to the cached
 /// [inventoryProvider] (Task 5) plus local filter/page state (Task 9;
@@ -93,31 +121,39 @@ class _SrpBodyState extends ConsumerState<_SrpBody> {
           Expanded(
             child: paged.items.isEmpty
                 ? _EmptyResults(onClearFilters: notifier.clearFilters)
-                : GridView.builder(
+                : MasonryGridView.custom(
                     gridDelegate: _srpGridDelegate,
-                    itemCount: paged.items.length,
-                    // A `key:` on the built VehicleCard alone is not enough --
-                    // SliverChildBuilderDelegate.findIndexByKey (what
-                    // GridView.builder uses to detect a keyed child's new
-                    // position) returns null and falls back to positional
-                    // reconciliation unless findChildIndexCallback is also
-                    // supplied. Without this, a filter/page change that drops
-                    // a vehicle from view can silently carry VehicleCard's
-                    // focus-highlight State over to a different vehicle now
-                    // occupying the same grid slot.
-                    findChildIndexCallback: (key) {
-                      final id = (key as ValueKey<int>).value;
-                      final index = paged.items.indexWhere((v) => v.id == id);
-                      return index == -1 ? null : index;
-                    },
-                    itemBuilder: (context, index) {
-                      final vehicle = paged.items[index];
-                      return VehicleCard(
-                        key: ValueKey(vehicle.id),
-                        vehicle: vehicle,
-                        onTap: () => widget.onVehicleTap?.call(vehicle),
-                      );
-                    },
+                    crossAxisSpacing: _srpGridSpacing,
+                    mainAxisSpacing: _srpGridSpacing,
+                    // MasonryGridView.custom (unlike .builder, which derives
+                    // this from itemCount automatically) doesn't default
+                    // semanticChildCount from the delegate's own childCount --
+                    // without this, a screen reader loses the grid's total
+                    // item count announcement.
+                    semanticChildCount: paged.items.length,
+                    childrenDelegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final vehicle = paged.items[index];
+                        return VehicleCard(
+                          key: ValueKey(vehicle.id),
+                          vehicle: vehicle,
+                          onTap: () => widget.onVehicleTap?.call(vehicle),
+                        );
+                      },
+                      childCount: paged.items.length,
+                      // A `key:` on the built VehicleCard alone is not enough --
+                      // SliverChildBuilderDelegate.findIndexByKey returns null
+                      // and falls back to positional reconciliation unless
+                      // findChildIndexCallback is also supplied. Without this,
+                      // a filter/page change that drops a vehicle from view can
+                      // silently carry VehicleCard's focus-highlight State over
+                      // to a different vehicle now occupying the same grid slot.
+                      findChildIndexCallback: (key) {
+                        final id = (key as ValueKey<int>).value;
+                        final index = paged.items.indexWhere((v) => v.id == id);
+                        return index == -1 ? null : index;
+                      },
+                    ),
                   ),
           ),
           if (paged.totalPages > 1) ...[
@@ -164,8 +200,10 @@ class _SrpSkeleton extends StatelessWidget {
             const SkeletonBox(height: 48),
             const SizedBox(height: 16),
             Expanded(
-              child: GridView.builder(
+              child: MasonryGridView.builder(
                 gridDelegate: _srpGridDelegate,
+                crossAxisSpacing: _srpGridSpacing,
+                mainAxisSpacing: _srpGridSpacing,
                 itemCount: 6,
                 itemBuilder: (context, index) => const _SkeletonCard(),
               ),
@@ -191,7 +229,7 @@ class _SkeletonCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SkeletonBox(height: 200, borderRadius: 0),
+          const AspectRatio(aspectRatio: kVehiclePhotoAspectRatio, child: SkeletonBox(borderRadius: 0)),
           Padding(
             padding: const EdgeInsets.all(12),
             child: Column(

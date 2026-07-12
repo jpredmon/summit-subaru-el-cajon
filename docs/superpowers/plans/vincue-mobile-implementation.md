@@ -565,3 +565,86 @@ paging/URL-sync work, VDP reachable with all four states correct.
   version also confirms it's genuinely the *loaded* state, not the
   separate not-found state, which would also clear the error text). Full
   suite (254 tests) + `flutter analyze` clean.
+
+- [x] **28. SRP grid bottom-gap bug fix** — real bug, not above-and-beyond
+  polish: JP reported (with a screenshot) that narrowing the browser
+  width left a growing empty gap underneath the price on every SRP card.
+  Root cause: `_srpGridDelegate` (`lib/screens/srp_screen.dart`) used a
+  fixed `mainAxisExtent: 340`, but `VehicleCard`'s photo scales
+  proportionally with column width (`AspectRatio(4/3)`) while its text
+  block doesn't — so at narrower widths the card's real content fell
+  well short of the fixed 340px cell. **First fix attempt (approved,
+  then reverted after it broke other tests):** a single `childAspectRatio
+  : 280/340` scales height proportionally with width, but proved
+  mathematically wrong — the true needed-height relationship is affine
+  (proportional photo + near-fixed text), not proportional, so a single
+  ratio through the origin *always* misses at some width (verified: it
+  fixed the reported gap but introduced a 7.1px `RenderFlex` overflow at
+  a different, narrower width used by three existing tests). **Actual
+  fix:** replaced the fixed-cell `GridView` with `flutter_staggered_grid
+  _view`'s `MasonryGridView` — each card now sizes to its own real
+  content height instead of a predicted one. New dependency, a deliberate
+  exception to this project's otherwise-minimal dependency list (see
+  bird's-eye architecture review) because a masonry layout is genuinely
+  the correct tool here, not an unneeded convenience. `MasonryGridView
+  .custom` (not `.builder`) used specifically to preserve the existing
+  `findChildIndexCallback` (Task 14c's focus-highlight-state fix — not
+  exposed on `.builder`). Skeleton loading grid (`_SkeletonCard`) updated
+  to match: its photo placeholder switched from a fixed `height: 200` box
+  to the same `AspectRatio(4/3)` the real card uses, so loading and
+  loaded states stay visually consistent. **New concept:** masonry grid
+  layout — documented in `docs/LEARNING.md`. **Test first:**
+  `test/screens/srp_screen_test.dart` — updated the existing delegate
+  test for `MasonryGridView`/`SliverSimpleGridDelegateWithMaxCrossAxis
+  Extent`, and added a new regression test that renders the grid at a
+  360px-wide viewport (forcing the exact narrow column width that wraps
+  the default fixture's mileage/body-style line to two lines) and
+  compares the grid-rendered card's height against the same card's own
+  natural (unconstrained) height at that width — proof the reported gap
+  is actually gone, not just that nothing threw. Full suite (255 tests) +
+  `flutter analyze` clean.
+  **Confidence: 92/100.** Verified rather than assumed that the reported
+  failure mode is structurally impossible now, not just untriggered in
+  the test I wrote: read `flutter_staggered_grid_view`'s
+  `RenderSliverMasonryGrid` source directly (`sliver_masonry_grid.dart`)
+  — each child is laid out with a cross-axis-only `BoxConstraints`
+  (`parentUsesSize: true`, no forced main-axis extent), meaning every
+  card gets exactly its own natural height, never a shared/stretched row
+  height. A "gap under the price" requires a taller box than the card's
+  own content around that individual card — which this layout cannot
+  produce, by construction, unlike the old fixed-cell `GridView`. What's
+  still uncertain (visual only, not correctness): the masonry packing
+  algorithm (shortest-column-first) means row *edges* can drift slightly
+  out of alignment across columns when neighboring card heights genuinely
+  differ — not a bug, but a real visual trade-off JP hasn't seen yet.
+  What could fail downstream: none of the app's other screens/tests touch
+  `_srpGridDelegate` or `GridView` directly (confirmed via grep — no
+  other production or test file references either), so this is scoped
+  cleanly to the SRP grid. How to verify further: JP checking the running
+  app at the same narrow width from the original bug report.
+  **Review (8-angle, high effort, 1-vote verify):** 8 findings survived
+  verification, 6 fixed directly — `semanticChildCount` wasn't defaulted
+  by `MasonryGridView.custom` the way `GridView.builder` defaulted it
+  (real accessibility regression, fixed); `SliverSimpleGridDelegateWith
+  MaxCrossAxisExtent.getCrossAxisCount` doesn't clamp to at least 1 the
+  way the Flutter SDK's own delegate did (a zero-width layout pass could
+  divide by zero downstream — fixed with a small clamping subclass,
+  `_ClampedMaxCrossAxisExtentDelegate`); grid spacing and the photo
+  aspect ratio were duplicated as independent literals instead of shared
+  constants (fixed — `_srpGridSpacing`, `kVehiclePhotoAspectRatio`); the
+  new regression test only proved "no exception," not that the actual
+  reported gap closed, and a `vehicle_card_test.dart` docstring
+  contradicted its own still-height-capped fixture (both strengthened).
+  Two findings judged no-change-needed: reviewers independently
+  identified that a same-file fix (`maxLines: 1` on the mileage/body-
+  style line) could have avoided the new dependency entirely — correct
+  as far as it goes, but verified during the original design discussion
+  that it wouldn't have been a complete fix either (the underlying
+  photo-proportional/text-fixed relationship is affine, not
+  proportional, so even single-line text leaves real residual overflow
+  risk at ~140–150px columns); this exact tradeoff was already presented
+  to and decided by JP before implementation, not a gap the review
+  surfaced fresh. The second (correctness now leans on a third-party
+  package's internal, undocumented layout behavior) is a real, honestly-
+  named risk accepted for this project's scope, not fixed. Full suite
+  (255 tests) + `flutter analyze` clean after all fixes.

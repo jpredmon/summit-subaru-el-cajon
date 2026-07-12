@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 
+/// Shared with the SRP skeleton loading card ([lib/screens/srp_screen.dart])
+/// so its placeholder photo block matches the real photo's proportions
+/// instead of an independent guessed value.
+const double kVehiclePhotoAspectRatio = 4 / 3;
+
 /// Builds the [ImageProvider] for a given photo URL. Defaults to
 /// [NetworkImage] in production; tests inject a builder that fails
 /// deterministically to exercise the placeholder fallback without hitting
@@ -34,7 +39,7 @@ class VehiclePhoto extends StatelessWidget {
     final hasUrl = url != null && url.isNotEmpty;
 
     return AspectRatio(
-      aspectRatio: 4 / 3,
+      aspectRatio: kVehiclePhotoAspectRatio,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(kCardRadius),
         child: hasUrl

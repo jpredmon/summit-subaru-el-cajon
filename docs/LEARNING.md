@@ -902,3 +902,39 @@ Both of these were flagged by the required per-task review, verified against
   own retry racing ahead. Confirmed by reading Riverpod's actual source
   (`element.dart`'s `origin.retry ?? container.retry ??
   ProviderContainer.defaultRetry`), not assumed from documentation.
+
+## 2026-07-12 — Masonry grid layout (Task 28: SRP grid bottom-gap bug)
+
+- **A `GridView`'s cell height is decided *before* any child is laid
+  out** — `SliverGridDelegateWithMaxCrossAxisExtent`'s `mainAxisExtent`/
+  `childAspectRatio` fixes every cell in a row to the same height up
+  front, then each child is squeezed into that box. That's fine when
+  every card's content genuinely scales with its width — it doesn't
+  here: `VehicleCard`'s photo scales proportionally (`AspectRatio(4/3)`),
+  but its text block doesn't (near-fixed line count, occasionally
+  wrapping one extra line at narrow widths). The true needed-height
+  relationship is *affine* (`height ≈ 0.75×width + textHeight`), not
+  proportional — so no single ratio through the origin can be correct at
+  every column width: it under-predicts (overflow) at narrow widths and
+  over-predicts (a visible empty gap) at wide ones. Confirmed by directly
+  measuring `VehicleCard`'s own natural height at several widths via
+  `tester.getSize()` in a throwaway test, not by guessing a constant.
+- **`flutter_staggered_grid_view`'s `MasonryGridView`** sidesteps this
+  entirely: each item is laid out at its own *natural* height first
+  (photo + however many text lines it actually needs), then packed into
+  whichever column has the least height so far — a real two-pass
+  measure-then-place algorithm, not a predicted one. `MasonryGridView
+  .custom` (not `.builder`) is needed to pass a full `SliverChildBuilder
+  Delegate` with `findChildIndexCallback` — `.builder` doesn't expose
+  that parameter, and it's what keeps a `VehicleCard`'s focus-highlight
+  `State` attached to the right vehicle (not the right grid slot) across
+  a filter change (Task 14c's fix). `SliverSimpleGridDelegateWithMax
+  CrossAxisExtent` mirrors the same column-count math as the `GridView`
+  delegate it replaced, so the self-tuning responsive column count is
+  unchanged.
+- **Trade-off worth naming:** masonry packing means row edges no longer
+  align perfectly across columns when card heights genuinely differ
+  (e.g. one card's metadata line wraps and a neighbor's doesn't) — a
+  deliberate, honest trade for "every card fits its own content exactly,
+  every time" over "every card matches a predicted height most of the
+  time."

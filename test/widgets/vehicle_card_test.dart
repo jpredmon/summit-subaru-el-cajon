@@ -8,8 +8,8 @@ import 'package:vincue_mobile/widgets/vehicle_photo.dart';
 
 import '../support/vehicle_factory.dart';
 
-// Constrained to a realistic grid-cell width — VehicleCard is always used
-// inside a GridView cell, never at full screen width.
+// Constrained to a realistic grid-column width — VehicleCard is always used
+// inside a masonry grid column, never at full screen width.
 Widget _wrap(Widget child) => MaterialApp(
       home: Scaffold(body: SizedBox(width: 220, child: child)),
     );
@@ -83,15 +83,16 @@ void main() {
   });
 
   testWidgets(
-    'a long make/model/trim does not overflow the grid tile (fixed height, matching '
-    "srp_screen.dart's actual GridView tile dimensions)",
+    'a long make/model/trim does not overflow the grid tile (280-wide, matching '
+    "srp_screen.dart's max column width; unconstrained height, matching the masonry "
+    "grid's real unbounded main axis -- the title's maxLines:1 ellipsis is what keeps "
+    'this bounded, not an artificial height cap)',
     (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
             body: SizedBox(
               width: 280,
-              height: 340,
               child: VehicleCard(
                 vehicle: vehicle(
                   make: 'Extended Super Duty Long-Bed',

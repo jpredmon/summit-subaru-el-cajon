@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vincue_mobile/models/body_category.dart';
@@ -56,9 +57,60 @@ void main() {
       ),
     );
 
-    final gridView = tester.widget<GridView>(find.byType(GridView));
-    final delegate = gridView.gridDelegate as SliverGridDelegateWithMaxCrossAxisExtent;
+    final gridView = tester.widget<MasonryGridView>(find.byType(MasonryGridView));
+    final delegate = gridView.gridDelegate as SliverSimpleGridDelegateWithMaxCrossAxisExtent;
     expect(delegate.maxCrossAxisExtent, 280);
+  });
+
+  testWidgets('grid cards size to their own content height at narrow column widths -- a '
+      'masonry layout (not a fixed-height GridView cell) so a card whose mileage/body-style '
+      'line wraps to two lines doesn\'t overflow, and a card that fits on one line doesn\'t '
+      'leave a gap underneath a taller neighbor', (tester) async {
+    // 360-wide viewport -> ~156px-wide columns after the 16px grid padding
+    // and cross-axis spacing -- narrow enough that "45,231 mi · Sedan"
+    // (the default vehicle_factory fixture) wraps to two lines, which is
+    // exactly the width range that overflowed a fixed-height GridView cell.
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final inventory = Inventory(vehicles: [vehicle(id: 1)], dealerName: 'Test Dealer');
+    await tester.pumpWidget(
+      _wrap(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            inventoryProvider.overrideWith((ref) => Future.value(inventory)),
+          ],
+          child: const SrpScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(VehicleCard), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    // The exception check above only proves the card didn't overflow --
+    // it doesn't prove the originally-reported bug (a gap between the
+    // price and the bottom of the card) is actually gone. Prove that
+    // directly: the grid gives this single-column layout a ~156px-wide
+    // cell (360 viewport - 32 padding = 328, one column since
+    // ceil(328/296)=... two columns of (328-16)/2=156 each). Compare the
+    // card's rendered height inside the real masonry grid against the
+    // same card's own natural (unconstrained-height) size at that exact
+    // width -- if the grid were still forcing a taller fixed cell, these
+    // would differ; under masonry they must be identical.
+    final renderedHeight = tester.getSize(find.byType(VehicleCard)).height;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: SizedBox(width: 156, child: VehicleCard(vehicle: vehicle(id: 1), onTap: () {}))),
+      ),
+    );
+    final naturalHeight = tester.getSize(find.byType(VehicleCard)).height;
+
+    expect(renderedHeight, closeTo(naturalHeight, 0.5));
   });
 
   testWidgets('shows an error message when inventory fails to load', (tester) async {
@@ -219,8 +271,8 @@ void main() {
   testWidgets(
     'a filter change that drops a vehicle from view does not carry its VehicleCard state over '
     'to a different vehicle now occupying the same grid slot -- VehicleCard is Stateful '
-    '(focus-highlight state, Task 14c) and GridView.builder reconciles by list position unless '
-    'each item carries a stable identity key',
+    '(focus-highlight state, Task 14c) and MasonryGridView.custom reconciles by list position '
+    'unless each item carries a stable identity key',
     (tester) async {
       final inventory = Inventory(
         vehicles: [
@@ -308,7 +360,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // GridView.builder only builds items within its viewport, so a raw
+      // MasonryGridView.custom only builds items within its viewport, so a raw
       // VehicleCard count would depend on the test surface's size rather
       // than paging logic. Check vehicle identity instead: item 12
       // ("Make12", the 13th vehicle) is only reachable on page 2, and
