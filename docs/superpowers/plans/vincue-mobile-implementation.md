@@ -195,9 +195,21 @@ Status legend: `[ ]` not started, `[~]` in progress, `[x]` done.
   non-fatal TypeScript errors (missing Node type declarations) — fixed for
   a clean build log, redeployed, re-verified.
 
-- [ ] **16. README/submission note** — caching/paging/filtering design +
+- [x] **16. README/submission note** — caching/paging/filtering design +
   dev/build-architecture decisions (proxy vs. direct-VINCUE, `-d web-server`
   vs `-d chrome`). No test — documentation only.
+  **Status:** DONE. `README.md` rewritten in full, mirroring the reference
+  app's README structure/tone per its own precedent: setup (web/native/
+  proxy), the CORS-bug architecture section, dev-environment notes,
+  design notes (caching/paging/filtering/data-transform/dark-mode-
+  deviation/visual-design), process notes (TDD/confidence-scoring/dual-
+  review/live-verification/systematic-debugging), an honest "Known
+  limitations" section (G1/G2/G3 from the polish backlog, dead photo
+  links, real-Android-device pass not yet done), and the existing git-
+  init-late development note kept as-is. All factual claims spot-checked
+  against `docs/SPEC.md`/the actual codebase before writing, not just
+  written from memory (e.g. the exact `Access-Control-Allow-Origin: *, *`
+  duplicated-header wording, confirmed `.env.example` exists).
 
 - [x] **17. Breakpoint utility** — `lib/theme/breakpoints.dart`:
   `WindowSizeClass` enum (`compact`/`medium`/`expanded`) + `kMediumBreakpoint`
