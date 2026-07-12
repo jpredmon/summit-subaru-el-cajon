@@ -276,6 +276,42 @@ step.
   Confidence 93/100. Review clean (1 Minor line-length nit, fixed via
   `dart format` in the follow-up commit).
 
+- [ ] **21. Deploy the Flutter app itself to Vercel** — not required
+  scope (`docs/context/original-request.md`'s submission mechanism is
+  repo access + a mobile-lead review call, not a public deployment); JP
+  explicitly asked for it as a deliberate above-and-beyond addition (a
+  real shareable link, and the only way to view the app on Apple hardware
+  since there's no native-iOS build possible on this Windows machine —
+  real Android testing goes through a native `.apk` over USB/ADB instead,
+  unrelated to this task). Per the approved design
+  (`docs/superpowers/specs/2026-07-12-app-deployment-design.md`): same
+  Vercel project as the already-deployed proxy (`api/inventory.ts`),
+  since Vercel natively serves static files + `api/` functions together
+  from one project and its own zero-config default already looks for a
+  `public/` directory when no framework is detected (confirmed in the
+  proxy's first deploy log). Build locally — Vercel's build container has
+  no Flutter SDK and doesn't recognize Flutter as a framework, so
+  building inside Vercel was considered and rejected as fragile. New
+  `deploy` script in root `package.json`:
+  ```json
+  "deploy": "flutter build web --release --dart-define=API_BASE_URL=/api/inventory && rm -rf public && cp -r build/web public && vercel deploy --prod"
+  ```
+  `API_BASE_URL` is deliberately a **relative** path (`/api/inventory`,
+  not the full prod URL) — the app and proxy become same-origin once both
+  are served from this one project, so a relative path resolves correctly
+  and doesn't hardcode the domain into the build. Add `public/` to
+  `.gitignore` (generated on every deploy from `build/web`, itself already
+  gitignored — never committed). **No TDD in the traditional sense** —
+  this is build/deploy configuration, not new Dart logic, same category
+  as Task 15b Half A's `package.json`/tooling additions. **Verification
+  (functional, not automated):** run `npm run deploy`, then load the real
+  production URL in a browser (not just `curl`) and confirm the SRP shows
+  real inventory data, filters/paging work, VDP is reachable, the dealer
+  name shows in the header (regression check), and the browser's network
+  tab shows same-origin `/api/inventory` calls with no CORS
+  preflight/error — the concrete proof the relative-URL decision was
+  correct.
+
 ## End-to-end verification (once Tasks 1–13 done)
 
 `flutter run -d web-server --web-port=8765`, open `http://localhost:8765`
