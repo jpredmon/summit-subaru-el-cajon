@@ -61,17 +61,46 @@ class _PlaceholderPhoto extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     return Semantics(
       label: 'No photo available',
       image: true,
       child: Container(
-        color: colorScheme.surfaceContainerHighest,
+        // Literal white, not the theme's adaptive surface color -- matches
+        // the logo's own white canvas it was designed/exported against
+        // (above-and-beyond branding, docs/superpowers/specs, header-logo
+        // design note).
+        color: Colors.white,
         alignment: Alignment.center,
-        child: Icon(
-          Icons.directions_car_filled_outlined,
-          size: 48,
-          color: colorScheme.onSurfaceVariant,
+        // The outer Semantics above already carries the one meaningful
+        // label ("No photo available") for this whole placeholder -- the
+        // logo image and "Vehicle Image Not Available" text underneath are
+        // purely decorative/redundant restatements of that same fact, not
+        // separate content. Without ExcludeSemantics here, the Text's own
+        // auto-generated semantics node conflicts with the outer
+        // `image: true` node and the compiled semantics tree silently
+        // drops the label entirely (found via direct semantics-tree
+        // inspection, not guessed) rather than throwing a catchable error.
+        child: const ExcludeSemantics(
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: FittedBox(
+              // Scales the whole logo+text block down together at small
+              // sizes (an SRP card thumbnail) without overflowing, and up
+              // at large ones (VDP's carousel) -- one widget, both contexts.
+              fit: BoxFit.contain,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Image(image: AssetImage('assets/images/summit_subaru_logo.png')),
+                  SizedBox(height: 12),
+                  Text(
+                    'Vehicle Image Not Available',
+                    style: TextStyle(fontFamily: 'Anton', fontSize: 20, color: Color(0xFF122847)),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );

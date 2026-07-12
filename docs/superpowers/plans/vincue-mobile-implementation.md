@@ -492,6 +492,35 @@ step.
   still applies tabular figures, preserves the base fontSize). Full suite
   (248 tests) + `flutter analyze` clean.
 
+- [x] **26. "Vehicle Image Not Available" placeholder** — above-and-beyond
+  polish, not core parity: replaces `_PlaceholderPhoto`'s generic car icon
+  (`lib/widgets/vehicle_photo.dart`) with the branded logo + "Vehicle Image
+  Not Available" (Anton font) on a white background, per JP's own design.
+  Built as a real Flutter widget composition (`Image.asset` logo + `Text`
+  in a `Column`, wrapped in `FittedBox(fit: BoxFit.contain)`), not a baked
+  static image — scales cleanly across both contexts this placeholder
+  shows in (a small SRP card thumbnail and the larger VDP carousel) from
+  one implementation. **Real accessibility bug found and fixed during
+  this task, not guessed at:** the child `Text` widget's own
+  auto-generated semantics node conflicted with the outer
+  `Semantics(image: true, ...)` wrapper, and the compiled semantics tree
+  silently dropped the `"No photo available"` label entirely (found via
+  direct semantics-tree inspection — `tester.binding.rootPipelineOwner
+  .semanticsOwner` — not a guess, and not a caught/thrown error, which is
+  what made it non-obvious). Fixed with `ExcludeSemantics` wrapping the
+  decorative logo+text content, so only the one meaningful outer label
+  reaches screen readers. **Test first:** `test/widgets/vehicle_photo_test
+  .dart` — new case asserts both the logo `Image` and the exact placeholder
+  text render; two pre-existing tests updated (`find.byType(Image),
+  findsNothing` → `find.bySemanticsLabel('Vehicle photo'), findsNothing`)
+  since an `Image` now legitimately exists in the placeholder itself.
+  Also updated `test/router/app_router_test.dart`'s ShellRoute regression
+  test to scope its `Image` finder to the `AppBar` specifically, since an
+  unscoped `find.byType(Image)` became ambiguous once the placeholder
+  (shown for the test's photo-less fixture vehicle) started using the
+  same logo image as the header. Full suite (249 tests) + `flutter
+  analyze` clean.
+
 ## End-to-end verification (once Tasks 1–13 done)
 
 `flutter run -d web-server --web-port=8765`, open `http://localhost:8765`

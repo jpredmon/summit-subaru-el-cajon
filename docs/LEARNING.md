@@ -852,3 +852,25 @@ Both of these were flagged by the required per-task review, verified against
   those three roles while every other property (size, weight, letter
   spacing) Material 3 already computed for that role stays correct —
   much safer than hand-building a whole custom `TextTheme` from scratch.
+
+## 2026-07-12 — `Semantics(image: true)` vs. a semantically-meaningful child
+
+- **A child widget with its own auto-generated semantics (like `Text`)
+  can silently override an ancestor `Semantics` node's label, with no
+  error thrown.** `Semantics(label: 'No photo available', image: true,
+  child: ...)` worked fine when its child was a plain `Icon` (decorative,
+  no semantic content of its own). Adding a `Text` widget as a descendant
+  broke it — the compiled semantics tree (what `find.bySemanticsLabel`
+  actually queries, *not* the widget tree `debugDumpApp()` shows) dropped
+  the outer label entirely. No exception, no warning; the only way to see
+  it was inspecting the real compiled tree directly
+  (`tester.binding.rootPipelineOwner.semanticsOwner
+  ?.rootSemanticsNode?.toStringDeep()`), not just reading the widget tree
+  or trusting that "the Semantics widget is there" means "the label
+  survives." **Fix:** wrap purely decorative content in
+  `ExcludeSemantics` so it contributes nothing to the compiled tree, and
+  the one meaningful ancestor label is what a screen reader actually
+  gets. Lesson for any future composite decorative widget (image + label
+  text meant to announce as one unit): decide up front whether the
+  children should be excluded, not just assume nesting `Semantics`
+  concepts composes safely by default.

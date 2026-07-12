@@ -274,12 +274,17 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byType(Image), findsOneWidget);
+      // Scoped to the AppBar specifically -- the vehicle-photo placeholder
+      // (lib/widgets/vehicle_photo.dart) now also shows this same logo
+      // image when a vehicle has no photo, so an unscoped find.byType
+      // (Image) is ambiguous (findsOneWidget would fail on "found 2").
+      final headerLogo = find.descendant(of: find.byType(AppBar), matching: find.byType(Image));
+      expect(headerLogo, findsOneWidget);
 
       await tester.tap(find.byType(VehicleCard));
       await tester.pumpAndSettle();
 
-      expect(find.byType(Image), findsOneWidget);
+      expect(headerLogo, findsOneWidget);
     },
   );
 

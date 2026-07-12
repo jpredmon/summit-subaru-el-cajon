@@ -20,7 +20,10 @@ void main() {
       _wrap(const VehiclePhoto(photoUrl: null, semanticLabel: 'Vehicle photo')),
     );
 
-    expect(find.byType(Image), findsNothing);
+    // No *vehicle* photo semantic label -- an Image now legitimately exists
+    // in the placeholder itself (the branded logo, see below), so
+    // find.byType(Image) is no longer a useful "no photo" signal on its own.
+    expect(find.bySemanticsLabel('Vehicle photo'), findsNothing);
     expect(find.bySemanticsLabel('No photo available'), findsOneWidget);
   });
 
@@ -29,8 +32,18 @@ void main() {
       _wrap(const VehiclePhoto(photoUrl: '', semanticLabel: 'Vehicle photo')),
     );
 
-    expect(find.byType(Image), findsNothing);
+    expect(find.bySemanticsLabel('Vehicle photo'), findsNothing);
     expect(find.bySemanticsLabel('No photo available'), findsOneWidget);
+  });
+
+  testWidgets('placeholder shows the branded logo and "Vehicle Image Not '
+      'Available" text', (tester) async {
+    await tester.pumpWidget(
+      _wrap(const VehiclePhoto(photoUrl: null, semanticLabel: 'Vehicle photo')),
+    );
+
+    expect(find.byType(Image), findsOneWidget);
+    expect(find.text('Vehicle Image Not Available'), findsOneWidget);
   });
 
   testWidgets('renders the photo when a valid image loads successfully', (tester) async {
