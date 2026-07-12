@@ -383,7 +383,12 @@ don't apply in Flutter and shouldn't be replicated:
   class-component `ErrorBoundary` restricted to `<Routes>`, e.g. via
   `ErrorWidget.builder` scoped appropriately or a dedicated boundary widget
   around the router's content); "Clear filters" control on empty filtered
-  results; placeholder fallback for broken/empty photo URLs via
+  results. The filter bar itself also shows its own "Clear filters" control
+  whenever a filter is active, reflowing alongside the filter dropdowns —
+  except while the empty-results panel is showing (filtered results are
+  empty), when the filter bar suppresses its copy so only the empty-results
+  panel's "Clear filters" control is on screen; placeholder fallback for
+  broken/empty photo URLs via
   `Image.network`'s `errorBuilder`, tracked per-index in the carousel.
 - **Visual design:** carry over the palette intent (slate neutrals + amber
   accent + emerald "Certified" badge) and the tabular-digit-alignment intent

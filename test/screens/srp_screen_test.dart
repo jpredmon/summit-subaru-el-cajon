@@ -231,10 +231,11 @@ void main() {
       expect(find.textContaining('No vehicles match these filters'), findsOneWidget);
       expect(find.byType(VehicleCard), findsNothing);
 
-      // Both the empty-results panel and the filter bar itself now offer a
-      // Clear filters control (any filter active) -- either does the same
-      // thing, so disambiguate rather than assert on which one exists.
-      await tester.tap(find.text('Clear filters').first);
+      // The filter bar's own Clear filters control is suppressed while
+      // results are empty -- the empty-results panel's control is the only
+      // one on screen, so there's no duplicate/ambiguous control.
+      expect(find.text('Clear filters'), findsOneWidget);
+      await tester.tap(find.text('Clear filters'));
       await tester.pumpAndSettle();
 
       expect(find.byType(VehicleCard), findsNWidgets(2));
@@ -994,6 +995,63 @@ void main() {
       expect(find.text('Clear filters'), findsNothing);
       // Clearing filters doesn't also close the panel -- still open.
       expect(find.text('Hide filters'), findsOneWidget);
+    });
+
+    Future<BuildContext> pumpEmptyResultsAt(WidgetTester tester, double width) async {
+      tester.view.physicalSize = Size(width, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      // Same zero-overlap pairing as the top-level empty-results test: Honda
+      // is a sedan, Toyota is an SUV, so make=Honda AND body=SUV matches
+      // nothing.
+      final inventory = Inventory(
+        vehicles: [
+          vehicle(id: 1, make: 'Honda', bodyStyle: BodyCategory.sedan),
+          vehicle(id: 2, make: 'Toyota', bodyStyle: BodyCategory.suv),
+        ],
+        dealerName: 'Test Dealer',
+      );
+      await tester.pumpWidget(
+        _wrap(
+          ProviderScope(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              inventoryProvider.overrideWith((ref) => Future.value(inventory)),
+            ],
+            child: const SrpScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return tester.element(find.byType(SrpScreen));
+    }
+
+    testWidgets('compact (360px) collapsed: suppressed when filtered results are empty', (tester) async {
+      final context = await pumpEmptyResultsAt(tester, 360);
+
+      ProviderScope.containerOf(context).read(srpStateProvider.notifier)
+        ..setMake('Honda')
+        ..setBody(BodyCategory.suv);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('No vehicles match these filters'), findsOneWidget);
+      expect(find.text('Clear filters'), findsOneWidget);
+    });
+
+    testWidgets('compact (360px) open: suppressed when filtered results are empty', (tester) async {
+      final context = await pumpEmptyResultsAt(tester, 360);
+
+      await tester.tap(find.byKey(const Key('apply-filters-toggle')));
+      await tester.pumpAndSettle();
+
+      ProviderScope.containerOf(context).read(srpStateProvider.notifier)
+        ..setMake('Honda')
+        ..setBody(BodyCategory.suv);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Hide filters'), findsOneWidget);
+      expect(find.textContaining('No vehicles match these filters'), findsOneWidget);
+      expect(find.text('Clear filters'), findsOneWidget);
     });
   });
 }

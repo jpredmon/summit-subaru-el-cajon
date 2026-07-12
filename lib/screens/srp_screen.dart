@@ -96,6 +96,7 @@ class _SrpBodyState extends ConsumerState<_SrpBody> {
     final options = ref.watch(filterOptionsProvider);
     final filtered = filterVehicles(widget.inventory.vehicles, srpState.filters);
     final paged = paginate(filtered, srpState.page, _pageSize);
+    final resultsEmpty = paged.items.isEmpty;
 
     // A page restored from a URL (or otherwise set directly) can be beyond
     // the real total for the current filtered result -- paginate() already
@@ -116,10 +117,15 @@ class _SrpBodyState extends ConsumerState<_SrpBody> {
         children: [
           Text('${filtered.length} vehicles', style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 16),
-          _FilterBar(filters: srpState.filters, options: options, notifier: notifier),
+          _FilterBar(
+            filters: srpState.filters,
+            options: options,
+            notifier: notifier,
+            resultsEmpty: resultsEmpty,
+          ),
           const SizedBox(height: 16),
           Expanded(
-            child: paged.items.isEmpty
+            child: resultsEmpty
                 ? _EmptyResults(onClearFilters: notifier.clearFilters)
                 : MasonryGridView.custom(
                     gridDelegate: _srpGridDelegate,
@@ -267,11 +273,21 @@ class _EmptyResults extends StatelessWidget {
 }
 
 class _FilterBar extends StatefulWidget {
-  const _FilterBar({required this.filters, required this.options, required this.notifier});
+  const _FilterBar({
+    required this.filters,
+    required this.options,
+    required this.notifier,
+    required this.resultsEmpty,
+  });
 
   final VehicleFilters filters;
   final FilterOptions options;
   final SrpStateNotifier notifier;
+
+  // Suppresses this bar's own Clear filters button while true -- when the
+  // filtered results are empty, _EmptyResults already shows a Clear filters
+  // control, and both being visible at once reads as a duplicate.
+  final bool resultsEmpty;
 
   @override
   State<_FilterBar> createState() => _FilterBarState();
@@ -300,6 +316,7 @@ class _FilterBarState extends State<_FilterBar> {
         widget.filters.body != null ||
         widget.filters.minPrice != null ||
         widget.filters.maxPrice != null;
+    final showClearFilters = hasActiveFilters && !widget.resultsEmpty;
     final clearFiltersButton = TextButton(
       onPressed: widget.notifier.clearFilters,
       child: const Text('Clear filters'),
@@ -320,7 +337,7 @@ class _FilterBarState extends State<_FilterBar> {
         return Wrap(
           spacing: 12,
           runSpacing: 12,
-          children: [make, body, minPrice, maxPrice, if (hasActiveFilters) clearFiltersButton],
+          children: [make, body, minPrice, maxPrice, if (showClearFilters) clearFiltersButton],
         );
       case WindowSizeClass.compact:
         if (!_compactFiltersOpen) {
@@ -335,7 +352,7 @@ class _FilterBarState extends State<_FilterBar> {
                   onPressed: () => setState(() => _compactFiltersOpen = true),
                   child: const Text('Apply filters'),
                 ),
-                if (hasActiveFilters) clearFiltersButton,
+                if (showClearFilters) clearFiltersButton,
               ],
             ),
           );
@@ -361,7 +378,7 @@ class _FilterBarState extends State<_FilterBar> {
                   onPressed: () => setState(() => _compactFiltersOpen = false),
                   child: const Text('Hide filters'),
                 ),
-                if (hasActiveFilters) clearFiltersButton,
+                if (showClearFilters) clearFiltersButton,
               ],
             ),
           ],
