@@ -375,7 +375,7 @@ class _FilterBarState extends State<_FilterBar> {
   }
 
   Widget _buildMakeDropdown(BuildContext context) {
-    final style = Theme.of(context).textTheme.bodyLarge!;
+    final style = Theme.of(context).textTheme.titleMedium!;
     final value = _validValue(widget.filters.make, widget.options.makes);
     final text = value ?? 'All makes';
     return Semantics(
@@ -400,7 +400,7 @@ class _FilterBarState extends State<_FilterBar> {
   }
 
   Widget _buildBodyDropdown(BuildContext context) {
-    final style = Theme.of(context).textTheme.bodyLarge!;
+    final style = Theme.of(context).textTheme.titleMedium!;
     final value = _validValue(widget.filters.body, widget.options.bodyStyles);
     final text = value?.displayName ?? 'All body styles';
     return Semantics(
@@ -431,7 +431,7 @@ class _FilterBarState extends State<_FilterBar> {
   }
 
   Widget _buildMinPriceDropdown(BuildContext context) {
-    final style = Theme.of(context).textTheme.bodyLarge!;
+    final style = Theme.of(context).textTheme.titleMedium!;
     final minPriceItems = minPriceOptions(widget.filters.maxPrice);
     final value = _validValue(widget.filters.minPrice, minPriceItems);
     final text = value != null ? formatPrice(value) : 'Min price';
@@ -460,7 +460,7 @@ class _FilterBarState extends State<_FilterBar> {
   }
 
   Widget _buildMaxPriceDropdown(BuildContext context) {
-    final style = Theme.of(context).textTheme.bodyLarge!;
+    final style = Theme.of(context).textTheme.titleMedium!;
     final maxPriceItems = maxPriceOptions(widget.filters.minPrice);
     final value = _validValue(widget.filters.maxPrice, maxPriceItems);
     final text = value != null ? formatPrice(value) : 'Max price';
