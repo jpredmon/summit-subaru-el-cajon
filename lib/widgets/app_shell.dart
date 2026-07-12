@@ -62,16 +62,20 @@ class AppShell extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         // Above-and-beyond branding (docs/superpowers/specs/2026-07-12-
-        // header-logo-design.md): the header always shows the fixed Summit
+        // header-logo-design.md): the header shows the fixed Summit
         // Subaru El Cajon logo, a deliberate divergence from SPEC's "live
         // dealer name in the header" text requirement. dealerName is kept
         // (not deleted) and now only feeds this Semantics label, so screen
         // readers still announce the live value even though sighted users
-        // see the fixed graphic. centerTitle is explicit because AppBar's
-        // default title alignment is platform-dependent (centered on iOS,
-        // left-aligned on Android) -- this app wants the logo centered
-        // everywhere. Sizing grows with window size class (logoSizingFor
-        // above) instead of staying fixed regardless of viewport width.
+        // see the fixed graphic -- except below 600px (compact), where
+        // kHideLogoAtCompact hides the graphic entirely (docs/superpowers/
+        // specs/2026-07-12-filter-bar-tiers-and-logo-visibility-design.md)
+        // and only the Semantics label survives. centerTitle is explicit
+        // because AppBar's default title alignment is platform-dependent
+        // (centered on iOS, left-aligned on Android) -- this app wants the
+        // logo centered everywhere. Sizing grows with window size class
+        // (logoSizingFor above) instead of staying fixed regardless of
+        // viewport width.
         toolbarHeight: hideLogo ? kToolbarHeight : sizing.toolbarHeight,
         centerTitle: true,
         title: hideLogo

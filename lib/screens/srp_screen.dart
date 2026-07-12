@@ -346,6 +346,14 @@ class _FilterBarState extends State<_FilterBar> {
     }
   }
 
+  /// Every `DropdownButton` below is built with `isExpanded: true`. Without
+  /// it, `DropdownButton` reserves closed-state width for its widest
+  /// possible menu item (e.g. "All body styles"), not the current
+  /// selection, and never shrinks below that. `isExpanded: true` instead
+  /// makes the button fill whatever width its parent gives it -- which is
+  /// exactly why wrapping it in a `SizedBox` sized by
+  /// [_dropdownContentWidth] works: the button has no independent
+  /// width opinion of its own to fight.
   double _dropdownContentWidth(String text, TextStyle style, {required double maxWidth}) {
     final painter = TextPainter(
       text: TextSpan(text: text, style: style),
