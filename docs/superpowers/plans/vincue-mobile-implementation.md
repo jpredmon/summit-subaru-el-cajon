@@ -276,7 +276,7 @@ step.
   Confidence 93/100. Review clean (1 Minor line-length nit, fixed via
   `dart format` in the follow-up commit).
 
-- [ ] **21. Deploy the Flutter app itself to Vercel** — not required
+- [~] **21. Deploy the Flutter app itself to Vercel** — not required
   scope (`docs/context/original-request.md`'s submission mechanism is
   repo access + a mobile-lead review call, not a public deployment); JP
   explicitly asked for it as a deliberate above-and-beyond addition (a
