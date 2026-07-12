@@ -47,6 +47,7 @@ app.*.map.json
 # Node/Vercel proxy (api/) related
 node_modules
 .vercel
+public
 
 # Env files (never commit secrets)
 .env
