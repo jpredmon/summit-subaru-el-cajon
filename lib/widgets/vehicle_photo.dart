@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
@@ -8,15 +9,18 @@ import '../theme/app_theme.dart';
 const double kVehiclePhotoAspectRatio = 4 / 3;
 
 /// Builds the [ImageProvider] for a given photo URL. Defaults to
-/// [NetworkImage] in production; tests inject a builder that fails
-/// deterministically to exercise the placeholder fallback without hitting
-/// the network.
+/// [CachedNetworkImageProvider] in production; tests inject a builder that
+/// fails deterministically to exercise the placeholder fallback without
+/// hitting the network.
 typedef VehiclePhotoProviderBuilder = ImageProvider Function(String url);
 
-/// Default [VehiclePhotoProviderBuilder] — plain [NetworkImage]. Public so
-/// other widgets embedding [VehiclePhoto] (e.g. [PhotoCarousel], Task 11) can
-/// reference the same default rather than duplicating it.
-ImageProvider defaultVehiclePhotoProvider(String url) => NetworkImage(url);
+/// Default [VehiclePhotoProviderBuilder] — [CachedNetworkImageProvider],
+/// which persists a downloaded photo to disk (Task 36 / G2) instead of only
+/// Flutter's automatic in-memory `ImageCache`, so it isn't re-fetched from
+/// Vincue's CDN on every app relaunch. Public so other widgets embedding
+/// [VehiclePhoto] (e.g. [PhotoCarousel], Task 11) can reference the same
+/// default rather than duplicating it.
+ImageProvider defaultVehiclePhotoProvider(String url) => CachedNetworkImageProvider(url);
 
 /// Shared photo widget for the SRP card (Task 9) and VDP carousel (Task 11).
 /// Shows a placeholder when [photoUrl] is null/empty *or* when the photo

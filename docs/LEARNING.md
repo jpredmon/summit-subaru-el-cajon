@@ -1004,3 +1004,41 @@ Both of these were flagged by the required per-task review, verified against
   fields one screen over) — this makes the *exact* width chosen for the
   cap non-critical, since anything longer than it now truncates
   gracefully instead of overflowing.
+
+## 2026-07-12 — Task 36: Disk-level image cache (G2)
+
+- **`ImageProvider` is a contract, not just what `NetworkImage` does.**
+  Swapping `NetworkImage(url)` for `cached_network_image`'s
+  `CachedNetworkImageProvider(url)` was a one-line change specifically
+  *because* `VehiclePhoto` already depended on the abstract `ImageProvider`
+  type (via the `VehiclePhotoProviderBuilder` typedef), not the concrete
+  `NetworkImage` class. Any `ImageProvider` subclass plugs into `Image`'s
+  `errorBuilder` the same way — confirmed by reading
+  `CachedNetworkImageProvider`'s source (it extends
+  `ImageProvider<CachedNetworkImageProvider>`, same base class), not
+  assumed — so the existing broken-link → placeholder fallback (Task 26)
+  needed no changes at all.
+- **In-memory cache vs. disk cache are two different lifetimes.** Flutter's
+  built-in `ImageCache` (what plain `NetworkImage` benefits from) only
+  lives as long as the app process does — a cold relaunch starts empty
+  again. `cached_network_image` adds a second, disk-backed layer
+  underneath that survives relaunches (via `flutter_cache_manager` on
+  native; a browser-cache-backed web implementation,
+  `cached_network_image_web`, on the web target) — the two aren't
+  competing options, they're stacked: memory cache for the current
+  session's speed, disk cache for not re-downloading at all next time.
+- **A widening `ImageProvider` typedef is a real extension seam, but it can
+  hide a scoping gap.** Because `defaultVehiclePhotoProvider` is the one
+  shared default for both the SRP grid's small thumbnails and the VDP
+  carousel's larger display, there's no way for either call site to say
+  "size me differently" — a real gap (logged as backlog item G4,
+  `above-and-beyond-candidates.md`) that only became visible by asking
+  "who else calls this function, at what size?" during review, not from
+  the diff itself.
+- **Real disk/network I/O resists unit testing, and that's OK.** The
+  test for this task doesn't pump a widget or hit real disk/network — it
+  just calls `defaultVehiclePhotoProvider(url)` and asserts the returned
+  object's *type*. That's a deliberate, narrower claim ("the right kind of
+  provider is configured") rather than a false promise to verify actual
+  disk persistence, which isn't practical in a fast, deterministic,
+  offline test suite.

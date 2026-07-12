@@ -142,7 +142,12 @@ the second read) asserts the loaded content replaces the error state.
 **New concept:** none new — idiomatic Riverpod cache invalidation,
 already used elsewhere in this codebase's pattern vocabulary.
 
-### G2. Disk-level image cache
+### G2. Disk-level image cache — promoted to Task 36 (2026-07-12)
+
+Not yet started. SPEC.md updated (new "Photo disk cache (G2)" bullet under
+Architecture decisions) and Task 36 added to
+`vincue-mobile-implementation.md`, per this file's own scope-discipline
+rule.
 
 `Image.network`/`NetworkImage` gets Flutter's automatic in-memory
 `ImageCache` for free (fine within one session), but nothing persists
@@ -210,3 +215,30 @@ the way `Row`'s default `mainAxisSize: MainAxisSize.max` did (a real
 regression caught by an independent code review, not shipped) — without
 `Center`, the controls would render flush-left instead of centered on
 any viewport wide enough for them to fit on one line.
+
+### G4. Photo disk cache has no per-context size limit
+
+Found during Task 36's (G2) dual review, 2026-07-12 — **deliberately
+deferred** (JP's call). `defaultVehiclePhotoProvider`
+(`lib/widgets/vehicle_photo.dart`) calls `CachedNetworkImageProvider(url)`
+with no `maxWidth`/`maxHeight`, even though the constructor supports
+resize-on-disk via both params. `VehiclePhoto` is shared verbatim between
+the SRP grid (`VehicleCard`, small masonry-grid thumbnail) and the VDP
+carousel (`PhotoCarousel`, larger display) — one `defaultVehiclePhotoProvider`
+function, no way for a call site to say "I'm a thumbnail." So every SRP
+thumbnail disk-caches and decodes the CDN's full-resolution original,
+multiplying disk/decode cost for the common browsing case with no size cap
+taken even though the API was available.
+
+Not a one-line fix: a blanket size cap would also degrade VDP carousel
+quality, since both contexts share the same provider function today. Needs
+`VehiclePhotoProviderBuilder`'s signature widened with a size hint (or two
+separate builders, one per context) before a fix is attempted.
+
+**Test first:** TBD once scoped — likely a widget test asserting
+`VehicleCard`'s `VehiclePhoto` receives a smaller `maxWidth` than
+`PhotoCarousel`'s, via an injected fake provider capturing its arguments
+(same injection pattern already used throughout `vehicle_photo_test.dart`).
+
+**New concept:** none new — same `ImageProvider` construction-parameter
+pattern already introduced by Task 36.

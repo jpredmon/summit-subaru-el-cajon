@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vincue_mobile/widgets/vehicle_photo.dart';
@@ -7,7 +8,8 @@ import 'package:vincue_mobile/widgets/vehicle_photo.dart';
 /// Always resolves to a 1x1 transparent PNG's worth of *invalid* bytes, so
 /// `Image`'s decoder rejects it and `errorBuilder` fires — deterministic,
 /// offline simulation of a dead photo URL. Real network loading uses
-/// [NetworkImage] in production (the widget's default `imageProvider`).
+/// [CachedNetworkImageProvider] in production (the widget's default
+/// `imageProvider`, Task 36).
 ImageProvider _alwaysFailingImageProvider(String url) {
   return MemoryImage(Uint8List.fromList([1, 2, 3]));
 }
@@ -15,6 +17,11 @@ ImageProvider _alwaysFailingImageProvider(String url) {
 Widget _wrap(Widget child) => MaterialApp(home: Scaffold(body: child));
 
 void main() {
+  test('defaultVehiclePhotoProvider uses disk-backed caching (Task 36 / G2), '
+      'not a plain NetworkImage', () {
+    expect(defaultVehiclePhotoProvider('https://example.com/photo.jpg'), isA<CachedNetworkImageProvider>());
+  });
+
   testWidgets('shows the placeholder when photoUrl is null', (tester) async {
     await tester.pumpWidget(
       _wrap(const VehiclePhoto(photoUrl: null, semanticLabel: 'Vehicle photo')),

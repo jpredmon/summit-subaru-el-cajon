@@ -1457,6 +1457,66 @@ paging/URL-sync work, VDP reachable with all four states correct.
   - Modify: `lib/widgets/app_shell.dart`
   - Test: `test/widgets/app_shell_test.dart`
 
+- [x] **36. Disk-level image cache (G2)** — **Status: DONE**, confidence
+  93/100. `defaultVehiclePhotoProvider` (`lib/widgets/vehicle_photo.dart`)
+  now returns `CachedNetworkImageProvider(url)` via `cached_network_image
+  ^3.4.1`; one new type-level unit test
+  (`test/widgets/vehicle_photo_test.dart`); full suite (273 tests) +
+  `flutter analyze` clean. Dual review flagged two issues, both resolved:
+  a stale doc comment on `VehiclePhotoProviderBuilder` still claiming
+  `NetworkImage` as the default (fixed in this diff), and a missing
+  `maxWidth`/`maxHeight` size cap that caches full-resolution photos even
+  for small SRP thumbnails (deliberately deferred — JP's call — logged as
+  new backlog item **G4** in `above-and-beyond-candidates.md`, since
+  SRP/VDP currently share one provider function with no per-context size
+  hint).
+
+  Real gap, not Flutter-flex polish: promoted from the G2 backlog entry in
+  `above-and-beyond-candidates.md` per the project's scope-discipline rule
+  (SPEC.md entry → numbered task → full loop), SPEC.md updated first (see
+  the new "Photo disk cache (G2)" bullet under Architecture decisions).
+  `Image.network`/`NetworkImage` only benefits from Flutter's in-memory
+  `ImageCache`, which is lost on every cold start — a real shipped app
+  would otherwise re-download every vehicle photo (up to 34/141 real-photo
+  vehicles per the field survey, SPEC.md:62) on every relaunch.
+
+  **Files:**
+  - Modify: `pubspec.yaml` (add `cached_network_image`)
+  - Modify: `lib/widgets/vehicle_photo.dart`
+    (`defaultVehiclePhotoProvider`)
+  - Test: `test/widgets/vehicle_photo_test.dart`
+
+  **Step 1 — write the failing test.** All existing `VehiclePhoto`/
+  `PhotoCarousel` widget tests already inject a fake `imageProvider`
+  (`test/widgets/vehicle_photo_test.dart`, `test/widgets/
+  photo_carousel_test.dart` — confirmed by grep, none exercise
+  `defaultVehiclePhotoProvider` directly), so they're unaffected by this
+  change and don't need edits. Add one new unit test in
+  `test/widgets/vehicle_photo_test.dart` asserting
+  `defaultVehiclePhotoProvider('some-url')` returns a
+  `CachedNetworkImageProvider` instance (type-level assertion, not real
+  disk I/O — mirrors the existing "assert the shape of the config, not the
+  live network/disk behavior" pattern already used for the define-resolver
+  tests, Task 15). Confirm it fails first (currently returns
+  `NetworkImage`).
+
+  **Step 2 — implement.** Add `cached_network_image` to `pubspec.yaml`
+  (confirm current stable version and its Flutter-web support story
+  against pub.dev at implementation time — G2's own backlog note flags
+  this as unverified). In `lib/widgets/vehicle_photo.dart`, change
+  `defaultVehiclePhotoProvider` to return
+  `CachedNetworkImageProvider(url)` instead of `NetworkImage(url)`. No
+  other change needed — `VehiclePhoto`'s `errorBuilder` fallback (Task 26)
+  and `PhotoCarousel`'s per-index failure tracking (Task 11) both consume
+  the `ImageProvider` through the same `Image`/`errorBuilder` contract, so
+  they carry over unchanged; confirm this with the full existing
+  `vehicle_photo_test.dart`/`photo_carousel_test.dart` suites rather than
+  assuming it.
+
+  **Step 3 — confidence score, dual review, LEARNING.md entry** (new
+  concept: `cached_network_image` / disk-backed `ImageProvider`), then
+  commit, per the standard per-task loop.
+
   **Step 1 — write the failing test**, alongside the existing logo-present
   assertions in `test/widgets/app_shell_test.dart`:
 

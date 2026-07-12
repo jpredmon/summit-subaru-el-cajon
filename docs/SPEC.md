@@ -257,6 +257,20 @@ class Vehicle {
   same single-derivation intent). Paging and filtering both operate
   client-side against this one cached list, exposed via further Riverpod
   providers derived from the base inventory provider.
+- **Photo disk cache (G2):** vehicle photos use `cached_network_image`'s
+  `CachedNetworkImageProvider`, swapped in for `VehiclePhoto`'s
+  `defaultVehiclePhotoProvider` (`lib/widgets/vehicle_photo.dart`), instead
+  of a plain `NetworkImage` — so a photo already downloaded persists across
+  app relaunches instead of being re-fetched from Vincue's CDN on every cold
+  start. Layered on top of, not a replacement for, Flutter's automatic
+  in-memory `ImageCache` (which only helps within one running session).
+  Native builds get true disk persistence; the web target gets
+  `cached_network_image`'s web cache backend instead (browser-cache-backed,
+  not the same on-disk guarantee as native, but still an improvement over
+  uncached `NetworkImage`). The existing broken/dead-link placeholder
+  fallback (`VehiclePhoto`'s `errorBuilder`) is unaffected —
+  `CachedNetworkImageProvider` still surfaces load failures through the same
+  `Image.errorBuilder` contract `NetworkImage` does.
 - **Shared client logic across builds:** one `InventoryApiClient` class used
   by both the web (proxy-backed) and native (direct-VINCUE) build via the
   base-URL/key switch — mirrors the web app's `api/_inventoryHandler.ts`
