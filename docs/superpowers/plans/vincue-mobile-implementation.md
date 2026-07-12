@@ -276,7 +276,7 @@ step.
   Confidence 93/100. Review clean (1 Minor line-length nit, fixed via
   `dart format` in the follow-up commit).
 
-- [~] **21. Deploy the Flutter app itself to Vercel** — not required
+- [x] **21. Deploy the Flutter app itself to Vercel** — not required
   scope (`docs/context/original-request.md`'s submission mechanism is
   repo access + a mobile-lead review call, not a public deployment); JP
   explicitly asked for it as a deliberate above-and-beyond addition (a
@@ -311,6 +311,15 @@ step.
   tab shows same-origin `/api/inventory` calls with no CORS
   preflight/error — the concrete proof the relative-URL decision was
   correct.
+  **Status:** DONE. Config committed `1cba737` (confidence 92). Deployed
+  live at **`https://flutterinventory.vercel.app`** — verified both via
+  `curl` (app root 200, `/api/inventory` 200 same-origin) and by JP
+  directly in a browser: real data, dealer name in header, navigation
+  working. One known cosmetic console error persists (the already-
+  diagnosed VINCUE broken-photo-link CORS artifact, stock photo
+  `1413439848`) — confirmed to reproduce identically from this production
+  origin too, proving it's upstream data quality, not environment-
+  specific.
 
 ## End-to-end verification (once Tasks 1–13 done)
 
