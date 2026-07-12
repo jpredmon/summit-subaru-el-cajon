@@ -280,6 +280,9 @@ class _FilterBar extends StatefulWidget {
 class _FilterBarState extends State<_FilterBar> {
   bool _compactFiltersOpen = false;
 
+  // Measured empirically (not guessed): a single-item DropdownButton's
+  // rendered width minus its Text child's raw TextPainter width, for the
+  // arrow icon + internal padding. See the design spec's probe test.
   static const double _dropdownChromeAllowance = 24;
   static const double _dropdownMinWidth = 72;
   static const double _makeMaxWidth = 234;
@@ -352,6 +355,14 @@ class _FilterBarState extends State<_FilterBar> {
     return (painter.width + _dropdownChromeAllowance).clamp(_dropdownMinWidth, maxWidth);
   }
 
+  /// Guards against Flutter's `DropdownButton` "value must match exactly one
+  /// item" invariant: a filter value can arrive from outside this widget's
+  /// own controls (restored from a URL via `SrpStateNotifier.restoreFrom`)
+  /// referencing a make/body/price no longer offered by [validOptions] --
+  /// e.g. a stale deep link, or a price not in the fixed threshold list.
+  /// Falls back to "no constraint" for display rather than crashing; the
+  /// underlying stored filter value is untouched, so it still participates
+  /// in `filterVehicles` as given.
   static T? _validValue<T>(T? candidate, List<T> validOptions) {
     return candidate != null && validOptions.contains(candidate) ? candidate : null;
   }
