@@ -226,6 +226,46 @@ Status legend: `[ ]` not started, `[~]` in progress, `[x]` done.
 verification pass — separate, confirm-before-install / near-project-end
 step.
 
+## Above-and-beyond additions (beyond parity scope — not Tasks 1–19)
+
+- [ ] **20. Malformed description entity-tag repair** — real Summit
+  Subaru El Cajon listings (confirmed on stock `RH801775` and `PLE17159`)
+  have a broken description-authoring template: `&ltb>...&lt/b>` instead
+  of `<b>...</b>` (opening `<` entity-encoded without its semicolon,
+  closing `>` left literal). `stripDescription`
+  (`lib/models/transform_vehicle.dart`) already correctly parses/strips
+  genuine tags via `package:html`, but a spec-compliant parser correctly
+  treats this malformed sequence as literal text, not a tag — so it
+  survives on-screen as visible `<b>`/`</b>` characters. This is not a bug
+  (the reference React app's identical `DOMParser`/`textContent` approach
+  would show the same artifact); it's a deliberate above-and-beyond
+  deviation from strict parity, per the approved design
+  (`docs/superpowers/specs/2026-07-11-description-entity-repair-design.md`).
+  New private helper `_repairMangledEntityTags(String text)` —
+  `text.replaceAll(RegExp(r'&lt(/?[A-Za-z]+)>'), '<\$1>')` — called at the
+  top of `stripDescription`, before the existing `\n`-stripping step.
+  Deliberately requires no semicolon between `&lt` and the tag name, so
+  genuinely well-formed `&lt;` entities are left untouched. General
+  letter-only tag-name pattern (not hardcoded to `b`/`i`) since the same
+  dealer template bug could recur with a different tag elsewhere in the
+  feed — confirmed systemic, not a one-off, since both captured examples
+  share the identical broken opening blurb. **Test first:** in
+  `test/models/transform_vehicle_test.dart`'s "description sanitization"
+  group, using the existing `_raw(description: ...)` override helper:
+
+  ```dart
+  test('repairs a mangled entity-encoded tag (dealer authoring-tool bug) before stripping', () {
+    final v = transformVehicle(
+      _raw(description: r'&ltb>Why BUY from Summit Subaru El Cajon?&lt/b> Great car!'),
+    );
+    expect(v.description, 'Why BUY from Summit Subaru El Cajon? Great car!');
+  });
+  ```
+
+  **Docs:** add a short bullet to `docs/SPEC.md`'s description-sanitization
+  section documenting this as an intentional, documented deviation from
+  strict reference-app parity (not an oversight).
+
 ## End-to-end verification (once Tasks 1–13 done)
 
 `flutter run -d web-server --web-port=8765`, open `http://localhost:8765`
