@@ -822,7 +822,17 @@ paging/URL-sync work, VDP reachable with all four states correct.
   plus a collapsible compact mode), so this entry's narrower framing is
   kept for history but the actual fix is tracked under the new task numbers.
 
-- [ ] **33. Content-driven dropdown width (replaces the flat 300px cap)** —
+- [x] **33. Content-driven dropdown width (replaces the flat 300px cap)** —
+  **Status: DONE**, commit `5fa11d2`. Implemented via subagent-driven
+  development (haiku implementer, sonnet reviewer). Confidence 92/100.
+  One review round: reviewer flagged that adding `style: dropdownStyle`
+  (`bodyLarge`) to all four dropdowns was an unverified silent style
+  change (Flutter's prior default was `titleMedium`, which this app's
+  theme overrides to Anton per Task 25). Verified, not assumed: Anton is
+  scoped to headline/title roles only (`app_theme.dart`), so the
+  dropdowns were unintentionally rendering in Anton before this task —
+  `bodyLarge`/Roboto is the correct fix, not a regression. Re-review
+  approved. Full suite (261 tests) + `flutter analyze` clean.
   per `docs/superpowers/specs/2026-07-12-filter-bar-tiers-and-logo-visibility-design.md`'s
   "Width mechanism" section. Each filter dropdown should render only as
   wide as its *current selection's* text actually needs, not a flat 300px
@@ -1044,7 +1054,21 @@ paging/URL-sync work, VDP reachable with all four states correct.
   measure framework behavior directly with a throwaway probe test rather
   than trusting what an API name implies.
 
-- [ ] **34. Tiered filter bar layout (4-in-a-row / 2-per-row / collapsible)** —
+- [x] **34. Tiered filter bar layout (4-in-a-row / 2-per-row / collapsible)** —
+  **Status: DONE**, commits `9aae5b0`, `29a555f` (fix). Implemented via
+  subagent-driven development. Confidence 94/100. One review round:
+  reviewer confirmed live-filtering stayed unstaged (the explicitly
+  rejected staged-apply model does not exist anywhere in the diff) and
+  caught two rationale comments silently dropped during the
+  Stateless→Stateful refactor (chrome-allowance measurement note,
+  `_validValue`'s crash-guard explanation) — restored verbatim,
+  re-review approved. Full suite (265+ tests) + `flutter analyze` clean.
+  **Post-merge, whole-branch review found one spec-wording issue** (not a
+  code defect): the design spec said compact-open dropdowns should be
+  "full-width," but they're actually content-width/left-aligned
+  (inherited from Task 33) — JP confirmed content-width is the correct,
+  intended behavior; the design spec's wording was corrected instead of
+  the code.
   per the design spec's "Filter bar layout per tier" section. Builds on
   Task 33's content-driven dropdown widths (each dropdown is already sized
   to its own content; this task only changes how the four are *arranged*).
@@ -1390,8 +1414,18 @@ paging/URL-sync work, VDP reachable with all four states correct.
   git commit -m "feat: tiered filter bar layout - 4-in-a-row/2-per-row/collapsible (Task 34)"
   ```
 
-- [ ] **35. Hide header logo below 600px, single reversible switch** — per
-  the design spec's "Header logo visibility" section. **JP's explicit
+- [x] **35. Hide header logo below 600px, single reversible switch** —
+  **Status: DONE**, commit `e61fcf2`. Implemented via subagent-driven
+  development. Reviewer approved with no fixes needed — confirmed
+  `kHideLogoAtCompact` is the sole gate (one boolean, read once, checked
+  in exactly one place) and the `Semantics(label: dealerName, ...)`
+  accessibility wrapper survives in both the hidden and shown branches.
+  Open item flagged by the implementer and both reviewers (not yet
+  resolved): `kToolbarHeight` (Material's 56px default) at compact-hidden
+  is an eyeball-pending value — needs a real narrow-viewport look before
+  treating it as final. Full suite (267 tests) + `flutter analyze` clean.
+
+  Per the design spec's "Header logo visibility" section. **JP's explicit
   note:** he may want to keep the logo at all sizes after seeing it
   rendered, or shrink it instead of hiding it — implementation must make
   this a single, localized branch point, not scattered logic, so reversing

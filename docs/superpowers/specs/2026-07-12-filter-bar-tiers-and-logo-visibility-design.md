@@ -67,10 +67,21 @@ two rows instead of one.
 Collapsed by default: a single button reading **"Apply filters"** replaces
 the dropdown row entirely, so a phone-width screen shows the vehicle grid
 immediately without the filter controls eating vertical space. Tapping it
-reveals all 4 dropdowns stacked full-width (today's existing narrow-`Wrap`
-fallback shape), with a way to fold them back away (the same button, now
-reading something like "Hide filters", or an explicit close action --
-finalize the exact label during implementation).
+reveals all 4 dropdowns stacked one-per-row, each still content-width and
+left-aligned (per the "Width mechanism" section below -- the hard rule
+that a dropdown is only as wide as its own content applies at every tier,
+including this one, not just expanded/medium), with a way to fold them
+back away (the same button, now reading something like "Hide filters", or
+an explicit close action -- finalize the exact label during
+implementation).
+
+**Confirmed during implementation review:** the final whole-branch review
+for Tasks 33-35 flagged that this section's original wording ("full-width")
+contradicted the Width mechanism section and the actual shipped behavior
+(content-width, left-aligned, inherited automatically from Task 33's
+per-dropdown sizing). JP confirmed content-width/left-aligned is correct
+and intentional -- this section's wording was the thing that was wrong,
+not the code.
 
 **Live filtering, unchanged:** selecting a dropdown value still filters the
 grid immediately, the same as today. The button is purely a show/hide
