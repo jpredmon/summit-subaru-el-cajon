@@ -9,6 +9,7 @@ import '../theme/app_theme.dart';
 import '../theme/breakpoints.dart';
 import '../utils/document_title.dart';
 import '../utils/format.dart';
+import '../widgets/inventory_error_view.dart';
 import '../widgets/photo_carousel.dart';
 import '../widgets/skeleton.dart';
 
@@ -48,12 +49,7 @@ class VdpScreen extends ConsumerWidget {
     // against here.
     return inventoryAsync.when(
       loading: () => const _VdpSkeleton(),
-      error: (error, stackTrace) => const Center(
-        child: Padding(
-          padding: EdgeInsets.all(32),
-          child: Text('Failed to load inventory. Please try again later.'),
-        ),
-      ),
+      error: (error, stackTrace) => InventoryErrorView(onRetry: () => ref.invalidate(inventoryProvider)),
       data: (inventory) => vehicle == null
           ? _NotFound(onBackToResults: onBackToResults)
           : _VdpBody(vehicle: vehicle, onBackToResults: onBackToResults),

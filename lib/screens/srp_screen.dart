@@ -12,6 +12,7 @@ import '../theme/app_theme.dart';
 import '../theme/breakpoints.dart';
 import '../utils/document_title.dart';
 import '../utils/format.dart';
+import '../widgets/inventory_error_view.dart';
 import '../widgets/skeleton.dart';
 import '../widgets/vehicle_card.dart';
 
@@ -43,12 +44,7 @@ class SrpScreen extends ConsumerWidget {
 
     return inventoryAsync.when(
       loading: () => const _SrpSkeleton(),
-      error: (error, stackTrace) => const Center(
-        child: Padding(
-          padding: EdgeInsets.all(32),
-          child: Text('Failed to load inventory. Please try again later.'),
-        ),
-      ),
+      error: (error, stackTrace) => InventoryErrorView(onRetry: () => ref.invalidate(inventoryProvider)),
       data: (inventory) => _SrpBody(inventory: inventory, onVehicleTap: onVehicleTap),
     );
   }

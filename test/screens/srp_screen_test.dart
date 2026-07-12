@@ -75,6 +75,43 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Failed to load inventory. Please try again later.'), findsOneWidget);
+    expect(find.text('Retry'), findsOneWidget);
+  });
+
+  testWidgets('tapping Retry re-fetches and shows loaded content on success', (tester) async {
+    var attempt = 0;
+    await tester.pumpWidget(
+      _wrap(
+        ProviderScope(
+          // Riverpod 3.x auto-retries a failed provider with a backoff
+          // Timer by default -- while a retry is pending, the provider's
+          // AsyncValue is AsyncLoading(retrying: true), not AsyncError, so
+          // .when() routes to loading:, not error:, until retries are
+          // exhausted. That races against (and defeats) this test's own
+          // controlled attempt-1-fails/attempt-2-succeeds sequencing, so
+          // auto-retry is disabled here to isolate the manual Retry
+          // button's behavior specifically.
+          retry: (retryCount, error) => null,
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            inventoryProvider.overrideWith((ref) {
+              attempt++;
+              if (attempt == 1) return Future<Inventory>.error(Exception('boom'));
+              return Future.value(Inventory(vehicles: [vehicle(id: 1)], dealerName: 'Test Dealer'));
+            }),
+          ],
+          child: const SrpScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Failed to load inventory. Please try again later.'), findsOneWidget);
+
+    await tester.tap(find.text('Retry'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Failed to load inventory. Please try again later.'), findsNothing);
+    expect(find.text('1 vehicles'), findsOneWidget);
   });
 
   testWidgets('shows the vehicle count and a card per vehicle once loaded', (tester) async {

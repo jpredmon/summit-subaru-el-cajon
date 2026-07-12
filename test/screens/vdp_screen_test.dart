@@ -54,6 +54,42 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Failed to load inventory. Please try again later.'), findsOneWidget);
+    expect(find.text('Retry'), findsOneWidget);
+  });
+
+  testWidgets('tapping Retry re-fetches and shows loaded content on success', (tester) async {
+    var attempt = 0;
+    await tester.pumpWidget(
+      _wrap(
+        ProviderScope(
+          // See srp_screen_test.dart's identical test for why auto-retry
+          // is disabled here -- Riverpod 3.x's own backoff-retry Timer
+          // would otherwise race ahead of this test's controlled
+          // attempt-1-fails/attempt-2-succeeds sequencing.
+          retry: (retryCount, error) => null,
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            inventoryProvider.overrideWith((ref) {
+              attempt++;
+              if (attempt == 1) return Future<Inventory>.error(Exception('boom'));
+              return Future.value(Inventory(vehicles: [vehicle(id: 1)], dealerName: 'Test Dealer'));
+            }),
+          ],
+          child: const VdpScreen(vehicleId: 1),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Failed to load inventory. Please try again later.'), findsOneWidget);
+
+    await tester.tap(find.text('Retry'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Failed to load inventory. Please try again later.'), findsNothing);
+    // Confirms the retry genuinely loaded the requested vehicle (id: 1),
+    // not just any non-error state -- e.g. distinct from the not-found
+    // state, which would also make the error text disappear.
+    expect(find.text('Vehicle not found.'), findsNothing);
   });
 
   testWidgets(

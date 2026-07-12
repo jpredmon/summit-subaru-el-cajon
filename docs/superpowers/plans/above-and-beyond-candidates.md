@@ -127,7 +127,7 @@ just honest answers to "would this hold up as a real shipped app." Same
 scope-discipline rule applies (SPEC.md entry → numbered task → full loop)
 before picking either up.
 
-### G1. Retry action on fetch failure
+### G1. Retry action on fetch failure — DONE (Task 27, 2026-07-12)
 
 `lib/screens/srp_screen.dart:49` and `lib/screens/vdp_screen.dart:54` both
 show a static `Text('Failed to load inventory. Please try again later.')`

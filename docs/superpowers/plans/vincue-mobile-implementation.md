@@ -538,3 +538,30 @@ step.
 manually, confirm SRP loads real data through the Vercel proxy, filters/
 paging/URL-sync work, VDP reachable with all four states correct.
 `flutter test` run in full after every task.
+
+- [x] **27. Retry action on fetch failure (G1)** — above-and-beyond
+  polish, not core parity: promoted from the G1 backlog entry in
+  `docs/superpowers/plans/above-and-beyond-candidates.md`. Both
+  `lib/screens/srp_screen.dart` and `lib/screens/vdp_screen.dart` showed
+  a static `Text('Failed to load inventory. Please try again later.')`
+  on fetch failure with no recovery besides a full page reload. New
+  shared `lib/widgets/inventory_error_view.dart` (`InventoryErrorView`,
+  the same message + a "Retry" button) replaces both screens' inline
+  error `Center(Padding(Text(...)))`, wired to `onRetry: () =>
+  ref.invalidate(inventoryProvider)` in each. **Real Riverpod 3.x
+  behavior discovered and worked around, not guessed at:** the framework
+  auto-retries a failed `FutureProvider` with its own backoff `Timer` by
+  default, and `pumpAndSettle()` waits for that timer too, silently
+  racing ahead of a test's own controlled failure/success sequencing —
+  found via direct debugging (real attempt counts, real semantics tree),
+  confirmed by reading Riverpod's actual source, fixed with
+  `ProviderScope(retry: (retryCount, error) => null)` in the two tests
+  that need deterministic control over exactly when each fetch attempt
+  resolves. Documented in `docs/LEARNING.md`. **Test first:**
+  `test/widgets/inventory_error_view_test.dart` (message + button render,
+  tapping calls `onRetry`) plus one test per screen confirming the
+  button is wired to a real `inventoryProvider` invalidate-and-refetch
+  that replaces the error state with loaded content on success (VDP's
+  version also confirms it's genuinely the *loaded* state, not the
+  separate not-found state, which would also clear the error text). Full
+  suite (254 tests) + `flutter analyze` clean.

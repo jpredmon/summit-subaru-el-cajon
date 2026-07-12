@@ -874,3 +874,31 @@ Both of these were flagged by the required per-task review, verified against
   text meant to announce as one unit): decide up front whether the
   children should be excluded, not just assume nesting `Semantics`
   concepts composes safely by default.
+
+## 2026-07-12 — Riverpod 3.x's built-in automatic retry (Task G1, retry button)
+
+- **`FutureProvider`/`AsyncNotifier` retry automatically with a backoff
+  `Timer` by default in Riverpod 3.x** — a failed provider doesn't just
+  sit in an error state waiting to be manually invalidated; the framework
+  itself re-runs the provider's build a number of times with increasing
+  delays. While a retry is scheduled, the provider's `AsyncValue` is
+  `AsyncLoading(..., retrying: true)` carrying the error, **not**
+  `AsyncError` — so `.when()`'s default `loading:`/`error:`/`data:`
+  branching routes to `loading:`, not `error:`, until retries are
+  exhausted. This is invisible from reading the widget code; it only
+  showed up as a real testing problem (see below).
+- **`tester.pumpAndSettle()` waits for pending `Timer`s, including that
+  retry backoff** — a widget test simulating "fails once, succeeds on
+  retry" via a call-counter override raced against Riverpod's own
+  automatic retry consuming the "second attempt" before the test's
+  manual button tap ever happened, silently corrupting the test's
+  intended sequencing (found by direct debugging — printing the actual
+  attempt count and the real semantics/widget tree — not guessed).
+- **Fix: `ProviderScope`/`ProviderContainer` takes an explicit `retry:
+  (int retryCount, Object error) => Duration?` parameter** — returning
+  `null` disables automatic retry for that scope entirely. Used in tests
+  that need to control exactly when each fetch attempt happens (like
+  testing a manual "Retry" button in isolation) without the framework's
+  own retry racing ahead. Confirmed by reading Riverpod's actual source
+  (`element.dart`'s `origin.retry ?? container.retry ??
+  ProviderContainer.defaultRetry`), not assumed from documentation.
