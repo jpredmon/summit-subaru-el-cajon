@@ -321,6 +321,77 @@ step.
   origin too, proving it's upstream data quality, not environment-
   specific.
 
+- [ ] **22. Summit Subaru El Cajon header logo** — above-and-beyond
+  branding, not core parity: replaces the plain `Text(dealerName)` AppBar
+  title (added last session, commit `f01e873`) with JP's custom-designed
+  logo (`assets/images/summit_subaru_logo.png`, 1460×824, transparent
+  background, already in place and confirmed via pixel-level alpha
+  check). Per the approved design
+  (`docs/superpowers/specs/2026-07-12-header-logo-design.md`): the logo
+  always shows regardless of the live `dealerName` value (a deliberate
+  divergence from `docs/SPEC.md`'s "live dealer name in the header"
+  requirement — documented as an intentional deviation, not silently
+  overridden). `ref.watch(dealerNameProvider)` in `lib/widgets/
+  app_shell.dart` stays exactly as-is (not deleted) and now feeds a
+  `Semantics(label: dealerName, ...)` wrapper around the logo image, so
+  screen readers still announce the live dealer name even though sighted
+  users see the fixed graphic. No new dependency — `Image.asset`, not
+  `flutter_svg`. `AppBar`'s `toolbarHeight` increases from Flutter's 56px
+  default to roughly 72-80px so "SUMMIT SUBARU"/"El Cajon" stay legible
+  rather than squeezed; exact value confirmed visually, same iterative
+  process used for the logo's own design. Dark mode is **not** removed
+  (explicitly considered and rejected — real regression risk against
+  already-shipped, SPEC-required, tested functionality); confirm the
+  logo's own colors (navy/gold/red/green) read acceptably against both
+  the light and dark AppBar background as-is.
+  1. **`pubspec.yaml`** — declare the asset under `flutter: assets:`
+     (currently the default commented-out template; this is the first
+     real asset this project adds):
+     ```yaml
+     flutter:
+       uses-material-design: true
+       assets:
+         - assets/images/summit_subaru_logo.png
+     ```
+  2. **`lib/widgets/app_shell.dart`** — change:
+     ```dart
+     appBar: AppBar(
+       title: Text(dealerName, maxLines: 1, overflow: TextOverflow.ellipsis),
+       actions: const [ThemeToggleButton()],
+     ),
+     ```
+     to:
+     ```dart
+     appBar: AppBar(
+       toolbarHeight: 76,
+       title: Semantics(
+         label: dealerName,
+         child: Image.asset('assets/images/summit_subaru_logo.png', fit: BoxFit.contain),
+       ),
+       actions: const [ThemeToggleButton()],
+     ),
+     ```
+     (`toolbarHeight: 76` is a starting value — adjust visually once
+     rendering if the logo looks cramped or the AppBar looks
+     disproportionately tall.)
+  3. **`docs/SPEC.md`** — short bullet in the "Dealer name" section
+     documenting this as an intentional above-and-beyond deviation:
+     the header shows a fixed branded logo rather than live dealer-name
+     text, with the live value still driving the image's accessibility
+     label.
+  **Test first:** in `test/widgets/app_shell_test.dart`, using the
+  existing `ProviderScope`/`inventoryProvider` override pattern already
+  in that file — assert an `Image` widget is present in the `AppBar`
+  (`find.byType(Image)` or matching on the asset path via
+  `find.byWidgetPredicate`), and assert a `Semantics` node carrying the
+  live `dealerName` as its label exists (`find.bySemanticsLabel
+  ('Summit Subaru El Cajon')` or equivalent). **Real uncertainty to
+  verify, not assume:** `Image.asset` in `flutter_test`'s widget-test
+  environment needs the asset actually registered in `pubspec.yaml` *and*
+  present on disk to resolve during a test run — confirm this actually
+  works (test passes for the right reason, not because the assertion is
+  vacuously true) before treating the task as done.
+
 ## End-to-end verification (once Tasks 1–13 done)
 
 `flutter run -d web-server --web-port=8765`, open `http://localhost:8765`
