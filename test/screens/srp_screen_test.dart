@@ -825,4 +825,81 @@ void main() {
       expect(find.byKey(const Key('srp-width-cap')), findsNothing);
     });
   });
+
+  group('filter bar tiers (Task 34)', () {
+    Future<void> pumpAt(WidgetTester tester, double width) async {
+      tester.view.physicalSize = Size(width, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      final inventory = Inventory(vehicles: [vehicle(id: 1)], dealerName: 'Test Dealer');
+      await tester.pumpWidget(
+        _wrap(
+          ProviderScope(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              inventoryProvider.overrideWith((ref) => Future.value(inventory)),
+            ],
+            child: const SrpScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('expanded (1400px): all 4 dropdowns share one row, no Apply-filters button', (tester) async {
+      await pumpAt(tester, 1400);
+      expect(find.byKey(const Key('apply-filters-toggle')), findsNothing);
+      final makeTop = tester.getTopLeft(find.byKey(const Key('make-filter'))).dy;
+      final bodyTop = tester.getTopLeft(find.byKey(const Key('body-filter'))).dy;
+      final maxPriceTop = tester.getTopLeft(find.byKey(const Key('max-price-filter'))).dy;
+      expect(makeTop, equals(bodyTop));
+      expect(makeTop, equals(maxPriceTop));
+    });
+
+    testWidgets('medium (700px): make+body share a row, min+max price share a second row', (tester) async {
+      await pumpAt(tester, 700);
+      expect(find.byKey(const Key('apply-filters-toggle')), findsNothing);
+      final makeTop = tester.getTopLeft(find.byKey(const Key('make-filter'))).dy;
+      final bodyTop = tester.getTopLeft(find.byKey(const Key('body-filter'))).dy;
+      final minPriceTop = tester.getTopLeft(find.byKey(const Key('min-price-filter'))).dy;
+      expect(makeTop, equals(bodyTop));
+      expect(minPriceTop, greaterThan(makeTop));
+    });
+
+    testWidgets('compact (360px): dropdowns start hidden behind an Apply-filters button', (tester) async {
+      await pumpAt(tester, 360);
+      expect(find.byKey(const Key('apply-filters-toggle')), findsOneWidget);
+      expect(find.text('Apply filters'), findsOneWidget);
+      expect(find.byKey(const Key('make-filter')), findsNothing);
+    });
+
+    testWidgets('compact (360px): tapping Apply filters reveals all 4 stacked, live-filters, and folds back away', (tester) async {
+      await pumpAt(tester, 360);
+
+      await tester.tap(find.byKey(const Key('apply-filters-toggle')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('make-filter')), findsOneWidget);
+      expect(find.byKey(const Key('body-filter')), findsOneWidget);
+      final makeTop = tester.getTopLeft(find.byKey(const Key('make-filter'))).dy;
+      final bodyTop = tester.getTopLeft(find.byKey(const Key('body-filter'))).dy;
+      expect(bodyTop, greaterThan(makeTop));
+
+      // Live filtering unchanged: selecting a make while the panel is open
+      // updates the grid immediately, no separate commit step.
+      await tester.tap(find.byKey(const Key('make-filter')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Honda').last);
+      await tester.pumpAndSettle();
+      final context = tester.element(find.byType(SrpScreen));
+      expect(
+        ProviderScope.containerOf(context).read(srpStateProvider).filters.make,
+        'Honda',
+      );
+
+      await tester.tap(find.byKey(const Key('apply-filters-toggle')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('make-filter')), findsNothing);
+    });
+  });
 }

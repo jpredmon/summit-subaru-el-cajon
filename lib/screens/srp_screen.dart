@@ -266,153 +266,208 @@ class _EmptyResults extends StatelessWidget {
   }
 }
 
-double _dropdownContentWidth(String text, TextStyle style, {required double maxWidth}) {
-  final painter = TextPainter(
-    text: TextSpan(text: text, style: style),
-    textDirection: TextDirection.ltr,
-    maxLines: 1,
-  )..layout();
-  return (painter.width + _dropdownChromeAllowance).clamp(_dropdownMinWidth, maxWidth);
-}
-
-// Measured empirically (not guessed): a single-item DropdownButton's
-// rendered width minus its Text child's raw TextPainter width, for the
-// arrow icon + internal padding. See the design spec's probe test.
-const double _dropdownChromeAllowance = 24;
-const double _dropdownMinWidth = 72;
-
-class _FilterBar extends StatelessWidget {
+class _FilterBar extends StatefulWidget {
   const _FilterBar({required this.filters, required this.options, required this.notifier});
 
   final VehicleFilters filters;
   final FilterOptions options;
   final SrpStateNotifier notifier;
 
+  @override
+  State<_FilterBar> createState() => _FilterBarState();
+}
+
+class _FilterBarState extends State<_FilterBar> {
+  bool _compactFiltersOpen = false;
+
+  static const double _dropdownChromeAllowance = 24;
+  static const double _dropdownMinWidth = 72;
   static const double _makeMaxWidth = 234;
   static const double _bodyMaxWidth = 266;
   static const double _priceMaxWidth = 169;
 
   @override
   Widget build(BuildContext context) {
-    final minPriceItems = minPriceOptions(filters.maxPrice);
-    final maxPriceItems = maxPriceOptions(filters.minPrice);
+    final windowSizeClass = windowSizeClassOf(MediaQuery.sizeOf(context).width);
+    final make = _buildMakeDropdown(context);
+    final body = _buildBodyDropdown(context);
+    final minPrice = _buildMinPriceDropdown(context);
+    final maxPrice = _buildMaxPriceDropdown(context);
 
-    final dropdownStyle = Theme.of(context).textTheme.bodyLarge!;
-    final makeValue = _validValue(filters.make, options.makes);
-    final bodyValue = _validValue(filters.body, options.bodyStyles);
-    final minPriceValue = _validValue(filters.minPrice, minPriceItems);
-    final maxPriceValue = _validValue(filters.maxPrice, maxPriceItems);
-    final makeText = makeValue ?? 'All makes';
-    final bodyText = bodyValue?.displayName ?? 'All body styles';
-    final minPriceText = minPriceValue != null ? formatPrice(minPriceValue) : 'Min price';
-    final maxPriceText = maxPriceValue != null ? formatPrice(maxPriceValue) : 'Max price';
+    switch (windowSizeClass) {
+      case WindowSizeClass.expanded:
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [make, const SizedBox(width: 12), body, const SizedBox(width: 12), minPrice, const SizedBox(width: 12), maxPrice],
+        );
+      case WindowSizeClass.medium:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(mainAxisSize: MainAxisSize.min, children: [make, const SizedBox(width: 12), body]),
+            const SizedBox(height: 12),
+            Row(mainAxisSize: MainAxisSize.min, children: [minPrice, const SizedBox(width: 12), maxPrice]),
+          ],
+        );
+      case WindowSizeClass.compact:
+        if (!_compactFiltersOpen) {
+          return Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              key: const Key('apply-filters-toggle'),
+              onPressed: () => setState(() => _compactFiltersOpen = true),
+              child: const Text('Apply filters'),
+            ),
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            make,
+            const SizedBox(height: 12),
+            body,
+            const SizedBox(height: 12),
+            minPrice,
+            const SizedBox(height: 12),
+            maxPrice,
+            const SizedBox(height: 12),
+            TextButton(
+              key: const Key('apply-filters-toggle'),
+              onPressed: () => setState(() => _compactFiltersOpen = false),
+              child: const Text('Hide filters'),
+            ),
+          ],
+        );
+    }
+  }
 
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
-      children: [
-        Semantics(
-          label: 'Make',
-          child: SizedBox(
-            width: _dropdownContentWidth(makeText, dropdownStyle, maxWidth: _makeMaxWidth),
-            child: DropdownButton<String?>(
-              isExpanded: true,
-              style: dropdownStyle,
-              key: const Key('make-filter'),
-              value: makeValue,
-              items: [
-                const DropdownMenuItem<String?>(value: null, child: Text('All makes', overflow: TextOverflow.ellipsis)),
-                ...options.makes.map(
-                  (make) => DropdownMenuItem<String?>(value: make, child: Text(make, overflow: TextOverflow.ellipsis)),
-                ),
-              ],
-              onChanged: notifier.setMake,
+  double _dropdownContentWidth(String text, TextStyle style, {required double maxWidth}) {
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      textDirection: TextDirection.ltr,
+      maxLines: 1,
+    )..layout();
+    return (painter.width + _dropdownChromeAllowance).clamp(_dropdownMinWidth, maxWidth);
+  }
+
+  static T? _validValue<T>(T? candidate, List<T> validOptions) {
+    return candidate != null && validOptions.contains(candidate) ? candidate : null;
+  }
+
+  Widget _buildMakeDropdown(BuildContext context) {
+    final style = Theme.of(context).textTheme.bodyLarge!;
+    final value = _validValue(widget.filters.make, widget.options.makes);
+    final text = value ?? 'All makes';
+    return Semantics(
+      label: 'Make',
+      child: SizedBox(
+        width: _dropdownContentWidth(text, style, maxWidth: _makeMaxWidth),
+        child: DropdownButton<String?>(
+          isExpanded: true,
+          style: style,
+          key: const Key('make-filter'),
+          value: value,
+          items: [
+            const DropdownMenuItem<String?>(value: null, child: Text('All makes', overflow: TextOverflow.ellipsis)),
+            ...widget.options.makes.map(
+              (make) => DropdownMenuItem<String?>(value: make, child: Text(make, overflow: TextOverflow.ellipsis)),
             ),
-          ),
+          ],
+          onChanged: widget.notifier.setMake,
         ),
-        Semantics(
-          label: 'Body style',
-          child: SizedBox(
-            width: _dropdownContentWidth(bodyText, dropdownStyle, maxWidth: _bodyMaxWidth),
-            child: DropdownButton<BodyCategory?>(
-              isExpanded: true,
-              style: dropdownStyle,
-              key: const Key('body-filter'),
-              value: bodyValue,
-              items: [
-                const DropdownMenuItem<BodyCategory?>(
-                  value: null,
-                  child: Text('All body styles', overflow: TextOverflow.ellipsis),
-                ),
-                ...options.bodyStyles.map(
-                  (body) => DropdownMenuItem<BodyCategory?>(
-                    value: body,
-                    child: Text(body.displayName, overflow: TextOverflow.ellipsis),
-                  ),
-                ),
-              ],
-              onChanged: notifier.setBody,
-            ),
-          ),
-        ),
-        Semantics(
-          label: 'Minimum price',
-          child: SizedBox(
-            width: _dropdownContentWidth(minPriceText, dropdownStyle, maxWidth: _priceMaxWidth),
-            child: DropdownButton<double?>(
-              isExpanded: true,
-              style: dropdownStyle,
-              key: const Key('min-price-filter'),
-              value: minPriceValue,
-              items: [
-                const DropdownMenuItem<double?>(value: null, child: Text('Min price', overflow: TextOverflow.ellipsis)),
-                ...minPriceItems.map(
-                  (threshold) => DropdownMenuItem<double?>(
-                    value: threshold,
-                    child: Text(formatPrice(threshold), overflow: TextOverflow.ellipsis),
-                  ),
-                ),
-              ],
-              onChanged: notifier.setMinPrice,
-            ),
-          ),
-        ),
-        Semantics(
-          label: 'Maximum price',
-          child: SizedBox(
-            width: _dropdownContentWidth(maxPriceText, dropdownStyle, maxWidth: _priceMaxWidth),
-            child: DropdownButton<double?>(
-              isExpanded: true,
-              style: dropdownStyle,
-              key: const Key('max-price-filter'),
-              value: maxPriceValue,
-              items: [
-                const DropdownMenuItem<double?>(value: null, child: Text('Max price', overflow: TextOverflow.ellipsis)),
-                ...maxPriceItems.map(
-                  (threshold) => DropdownMenuItem<double?>(
-                    value: threshold,
-                    child: Text(formatPrice(threshold), overflow: TextOverflow.ellipsis),
-                  ),
-                ),
-              ],
-              onChanged: notifier.setMaxPrice,
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 
-  /// Guards against Flutter's `DropdownButton` "value must match exactly one
-  /// item" invariant: a filter value can arrive from outside this widget's
-  /// own controls (restored from a URL via `SrpStateNotifier.restoreFrom`)
-  /// referencing a make/body/price no longer offered by [validOptions] --
-  /// e.g. a stale deep link, or a price not in the fixed threshold list.
-  /// Falls back to "no constraint" for display rather than crashing; the
-  /// underlying stored filter value is untouched, so it still participates
-  /// in `filterVehicles` as given.
-  static T? _validValue<T>(T? candidate, List<T> validOptions) {
-    return candidate != null && validOptions.contains(candidate) ? candidate : null;
+  Widget _buildBodyDropdown(BuildContext context) {
+    final style = Theme.of(context).textTheme.bodyLarge!;
+    final value = _validValue(widget.filters.body, widget.options.bodyStyles);
+    final text = value?.displayName ?? 'All body styles';
+    return Semantics(
+      label: 'Body style',
+      child: SizedBox(
+        width: _dropdownContentWidth(text, style, maxWidth: _bodyMaxWidth),
+        child: DropdownButton<BodyCategory?>(
+          isExpanded: true,
+          style: style,
+          key: const Key('body-filter'),
+          value: value,
+          items: [
+            const DropdownMenuItem<BodyCategory?>(
+              value: null,
+              child: Text('All body styles', overflow: TextOverflow.ellipsis),
+            ),
+            ...widget.options.bodyStyles.map(
+              (body) => DropdownMenuItem<BodyCategory?>(
+                value: body,
+                child: Text(body.displayName, overflow: TextOverflow.ellipsis),
+              ),
+            ),
+          ],
+          onChanged: widget.notifier.setBody,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMinPriceDropdown(BuildContext context) {
+    final style = Theme.of(context).textTheme.bodyLarge!;
+    final minPriceItems = minPriceOptions(widget.filters.maxPrice);
+    final value = _validValue(widget.filters.minPrice, minPriceItems);
+    final text = value != null ? formatPrice(value) : 'Min price';
+    return Semantics(
+      label: 'Minimum price',
+      child: SizedBox(
+        width: _dropdownContentWidth(text, style, maxWidth: _priceMaxWidth),
+        child: DropdownButton<double?>(
+          isExpanded: true,
+          style: style,
+          key: const Key('min-price-filter'),
+          value: value,
+          items: [
+            const DropdownMenuItem<double?>(value: null, child: Text('Min price', overflow: TextOverflow.ellipsis)),
+            ...minPriceItems.map(
+              (threshold) => DropdownMenuItem<double?>(
+                value: threshold,
+                child: Text(formatPrice(threshold), overflow: TextOverflow.ellipsis),
+              ),
+            ),
+          ],
+          onChanged: widget.notifier.setMinPrice,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMaxPriceDropdown(BuildContext context) {
+    final style = Theme.of(context).textTheme.bodyLarge!;
+    final maxPriceItems = maxPriceOptions(widget.filters.minPrice);
+    final value = _validValue(widget.filters.maxPrice, maxPriceItems);
+    final text = value != null ? formatPrice(value) : 'Max price';
+    return Semantics(
+      label: 'Maximum price',
+      child: SizedBox(
+        width: _dropdownContentWidth(text, style, maxWidth: _priceMaxWidth),
+        child: DropdownButton<double?>(
+          isExpanded: true,
+          style: style,
+          key: const Key('max-price-filter'),
+          value: value,
+          items: [
+            const DropdownMenuItem<double?>(value: null, child: Text('Max price', overflow: TextOverflow.ellipsis)),
+            ...maxPriceItems.map(
+              (threshold) => DropdownMenuItem<double?>(
+                value: threshold,
+                child: Text(formatPrice(threshold), overflow: TextOverflow.ellipsis),
+              ),
+            ),
+          ],
+          onChanged: widget.notifier.setMaxPrice,
+        ),
+      ),
+    );
   }
 }
 
