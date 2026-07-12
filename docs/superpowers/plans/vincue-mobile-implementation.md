@@ -321,7 +321,7 @@ step.
   origin too, proving it's upstream data quality, not environment-
   specific.
 
-- [ ] **22. Summit Subaru El Cajon header logo** — above-and-beyond
+- [x] **22. Summit Subaru El Cajon header logo** — above-and-beyond
   branding, not core parity: replaces the plain `Text(dealerName)` AppBar
   title (added last session, commit `f01e873`) with JP's custom-designed
   logo (`assets/images/summit_subaru_logo.png`, 1460×824, transparent
@@ -391,6 +391,16 @@ step.
   present on disk to resolve during a test run — confirm this actually
   works (test passes for the right reason, not because the assertion is
   vacuously true) before treating the task as done.
+  **Status:** DONE, committed `7820066`. Confidence 93/100. Review clean
+  — verified `Image.asset` genuinely resolves in `flutter_test` (RED/
+  GREEN confirmed, not assumed), full suite (237 tests) + `flutter
+  analyze` clean. The two pre-existing tests asserting the old `Text
+  (dealerName)` title were correctly replaced (that widget no longer
+  exists after this change; the live-dealerName-reaches-the-UI behavior
+  they covered now lives in the new Semantics-label assertion) — a
+  necessary consequence of the approved design, not a gap. Remaining
+  uncertainty (`toolbarHeight`, logo legibility/contrast in both themes)
+  is visual and needs JP's own look at the running app.
 
 - [x] **23. Favicon** — above-and-beyond, config-only, no testable logic
   (same TDD exception as Task 1's scaffolding). JP generated a favicon

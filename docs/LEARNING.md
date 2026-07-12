@@ -810,3 +810,21 @@ Both of these were flagged by the required per-task review, verified against
   same minor test-duplication observation, which is a useful cross-check
   signal on its own (independent agreement without shared context is worth
   more than one agent stating something with high confidence).
+
+## 2026-07-12 — Task 22: Summit Subaru header logo
+
+- **Flutter's asset system (`pubspec.yaml` assets + `Image.asset`).**
+  Flutter doesn't auto-discover files in the project the way a web
+  build tool might glob a folder — every image/font/data file bundled
+  into the app has to be explicitly listed under `flutter: assets:` in
+  `pubspec.yaml` (a plain list of file paths, relative to the project
+  root). Once listed, `Image.asset('path/to/file.png')` in widget code
+  loads it — the framework packages the declared files into the app
+  bundle at build time and looks them up by that exact path string at
+  runtime. This project's `pubspec.yaml` shipped with this section
+  commented out (part of the default `flutter create` template), so the
+  Summit Subaru logo is the first real asset this app has registered.
+  Useful side effect: `flutter_test`'s widget tests resolve `Image.asset`
+  the same way the real app does, as long as the asset is declared in
+  `pubspec.yaml` and present on disk — no special test-only asset
+  mocking needed.
