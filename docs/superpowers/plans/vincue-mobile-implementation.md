@@ -466,6 +466,19 @@ step.
   `bodyMedium`/`bodySmall`/`bodyLarge` are explicitly NOT `'Anton'`
   (confirms the scope boundary, not just the positive case). Full suite
   (245 tests) + `flutter analyze` clean.
+  **Follow-up fix (same day):** JP spotted prices (and other tabular
+  numeric displays) looking "scrunched" — `vehicle_card.dart`'s price
+  Text bolds an already-Anton `titleMedium` base via `tabularNumsStyle`,
+  and Anton's condensed numeral glyphs don't suit `FontFeature
+  .tabularFigures()`'s fixed-width digit alignment. Fixed at the single
+  shared point every numeric display already routes through:
+  `tabularNumsStyle` (`lib/theme/app_theme.dart`) now always forces
+  digits back to `_kDefaultFontFamily` ('Roboto'), regardless of the
+  base style's own font — fixes prices, mileage, mpg, and page counters
+  everywhere at once, no per-call-site changes needed. Test-first
+  (3 new cases in `test/theme/app_theme_test.dart`: overrides Anton away,
+  still applies tabular figures, preserves the base fontSize). Full suite
+  (248 tests) + `flutter analyze` clean.
 
 ## End-to-end verification (once Tasks 1–13 done)
 

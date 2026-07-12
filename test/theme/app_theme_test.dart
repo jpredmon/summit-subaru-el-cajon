@@ -1,7 +1,30 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vincue_mobile/theme/app_theme.dart';
 
 void main() {
+  group('tabularNumsStyle', () {
+    test('overrides an Anton-family base back to a readable font for digit '
+        'sequences (prices, mileage, mpg, page counters) -- Anton\'s '
+        'condensed numeral glyphs look scrunched under tabular alignment', () {
+      const antonBase = TextStyle(fontFamily: 'Anton', fontSize: 20);
+      final result = tabularNumsStyle(antonBase);
+      expect(result.fontFamily, isNot('Anton'));
+    });
+
+    test('still applies tabular figure alignment', () {
+      const base = TextStyle(fontFamily: 'Anton', fontSize: 20);
+      final result = tabularNumsStyle(base);
+      expect(result.fontFeatures, contains(const FontFeature.tabularFigures()));
+    });
+
+    test('preserves fontSize from the base style', () {
+      const base = TextStyle(fontFamily: 'Anton', fontSize: 24);
+      final result = tabularNumsStyle(base);
+      expect(result.fontSize, 24);
+    });
+  });
+
   group('header/title font (matches the Summit Subaru logo lettering)', () {
     test('light theme: headline/title roles use Anton', () {
       final textTheme = AppTheme.light().textTheme;

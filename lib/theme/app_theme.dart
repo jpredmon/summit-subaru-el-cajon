@@ -6,9 +6,23 @@ const double kCardRadius = 12.0;
 /// "Certified" badge accent (emerald) — outside the amber/slate palette scale.
 const Color kCertifiedColor = Color(0xFF10B981);
 
-/// Applies tabular-figure alignment for numeric displays (prices, mileage, mpg, counters).
+/// Material 3's default font family -- explicitly named so [tabularNumsStyle]
+/// can force numeric displays back onto it, undoing the header/title font
+/// (Anton) some numbers would otherwise inherit from a `titleMedium`/
+/// `titleLarge` base style.
+const String _kDefaultFontFamily = 'Roboto';
+
+/// Applies tabular-figure alignment for numeric displays (prices, mileage,
+/// mpg, counters). Also forces the font back to [_kDefaultFontFamily]
+/// regardless of the base style's own font -- Anton (the header/title font)
+/// has condensed numeral glyphs that look scrunched once stretched to
+/// tabular-figure fixed-width, so numeric displays opt out of it even when
+/// their base style (e.g. a bold price using `titleMedium`) is Anton.
 TextStyle tabularNumsStyle(TextStyle base) {
-  return base.copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
+  return base.copyWith(
+    fontFamily: _kDefaultFontFamily,
+    fontFeatures: const [FontFeature.tabularFigures()],
+  );
 }
 
 class AppTheme {
