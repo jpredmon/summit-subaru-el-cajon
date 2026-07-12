@@ -392,6 +392,18 @@ step.
   works (test passes for the right reason, not because the assertion is
   vacuously true) before treating the task as done.
 
+- [x] **23. Favicon** — above-and-beyond, config-only, no testable logic
+  (same TDD exception as Task 1's scaffolding). JP generated a favicon
+  package (favicon.io) from the finished logo. Replaced Flutter's default
+  template icons in place — same filenames, so no `index.html`/
+  `manifest.json` changes needed: `favicon-96x96.png` → `web/favicon.png`,
+  `web-app-manifest-192x192.png` → `web/icons/Icon-192.png`,
+  `web-app-manifest-512x512.png` → `web/icons/Icon-512.png` (dimension-
+  matched to `manifest.json`'s declared `"sizes"` exactly). Verified
+  byte-for-byte against source via `cmp`. The two maskable-icon files
+  (`Icon-maskable-192.png`, `Icon-maskable-512.png`) are left as Flutter's
+  defaults — the generated package didn't include maskable-safe variants.
+
 ## End-to-end verification (once Tasks 1–13 done)
 
 `flutter run -d web-server --web-port=8765`, open `http://localhost:8765`
