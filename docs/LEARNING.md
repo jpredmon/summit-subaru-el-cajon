@@ -1294,3 +1294,117 @@ assuming the earlier work was sound.
   (direct call, no proxy) — the proxy's value is scoped exactly to the
   one target (browser) that actually has the problem, not blanket
   infrastructure.
+
+## 2026-07-13 — Retrospective: whole-project order-of-operations review
+
+Not a new-concept entry — a full pass over this entire file plus the
+commit history in chronological order, prompted by asking directly what
+to do differently next time rather than assuming the process was sound
+throughout.
+
+**Got wrong, roughly by impact:**
+
+- **Git init landed ~8 tasks late, not at time zero.** Tasks 1-5 exist as
+  one squashed baseline commit (`49514cd`) because git wasn't
+  initialized until Task 8 (see README "Development notes"). Already
+  self-corrected and turned into a standing global rule (`git init` as
+  mandatory step zero) — the cleanest example of the pattern below: an
+  assumed-handled setup step that wasn't checked.
+- **Per-task review was self-graded for Tasks 6-11, not run through an
+  independent pass, despite the process requiring exactly that.** The
+  retroactive `/code-review` pass (`1690a51`) found 9 real issues,
+  including a live `DropdownButton` crash risk. A safeguard specified on
+  paper isn't the same as one actually exercised.
+- **Real data/device/browser contact was reactive, not front-loaded —
+  the single strongest recurring pattern in this whole log.** Three
+  independent incidents, each "first real contact surfaces a bug nothing
+  before it caught," all 20+ tasks into the build: the dealer-name
+  header bug (Task 15b — invisible through Tasks 9-14 because every
+  widget test used fixture data where "no title"/"fallback"/"real
+  title" look identical); the `SliverMasonryGrid` crash (Task 38 — 3
+  synthetic repro attempts failed, ordinary real use found it
+  immediately); Task 39's own first real-device run (failed on a
+  hardcoded `find.text('All makes')` because a real compact-width device
+  shows the shortened "Makes" label). A cheap early "does this render
+  for real, even briefly" checkpoint (rather than only at Tasks 15b/38/
+  39) would likely have caught cheaper versions of each sooner.
+- **The 1.5GB deploy-artifact bug sat from Task 21 (first deploy) to the
+  final commits (`39a9457`).** A pure build-hygiene issue, unrelated to
+  app logic, never checked for until the very end — unlike everything in
+  `possible-to-dos.md`, it wasn't deferred *or* tracked, just never
+  enumerated as a thing to verify.
+- **Tasks 33-35 shipped and then immediately reversed two of their own
+  three core decisions:** logo-hide-at-compact (`e61fcf2`) reverted in
+  `bbd59a8`; the dropdown font swap (`5fa11d2`) reverted in `8529888`;
+  Task 34's hardcoded row tiers refactored to organic `Wrap` reflow
+  shortly after (`8949000`). All three passed TDD + review cleanly — the
+  reversal wasn't a bug, it was a live look at the render disagreeing
+  with the plan, after the fact rather than before.
+
+**Got right:**
+
+- **Every mistake became a durable process change, not a one-off
+  patch** — git-init became a global rule; the review gap became this
+  project's explicit dual-review mandate; found bugs got logged in this
+  file or `possible-to-dos.md`, never silently absorbed.
+- **Scope discipline held throughout.** Responsive layout (Tasks 17-19)
+  and the entity-tag repair (Task 20) were both proactively flagged as
+  real gaps and folded into SPEC.md as explicit deviations, not silently
+  done and not silently skipped.
+- **A consistent "verify against the real source, don't trust the docs/
+  mental model" habit recurred independently across very different
+  contexts:** Riverpod's retry internals (read from `element.dart`
+  directly), the Flutter-Web Enter-key intent divergence (confirmed
+  against the actual SDK source), `CachedNetworkImageProvider`'s
+  disk-resize behavior, the `isExpanded` wide-screen regression (measured
+  at a real 1200px viewport, not assumed fixed).
+- **Task 15/15b split cleanly** — the Dart-side config resolver was
+  TDD'd and shipped independent of the actual proxy deployment
+  (deliberately deferred), so neither blocked the other's own
+  correctness loop.
+- **The two-pane VDP episode resolved properly, not just reverted-and-
+  abandoned.** Tried (Tasks 17-19), reverted after live review (Task
+  32), and the actual underlying problem got solved a third way later
+  (Task 41's photo-shrink) — the revert never became a permanent
+  capability loss.
+- **Confidence scoring's 3-pass iteration cap did real work** — bounded
+  iteration on uncertain tasks instead of either false confidence or
+  infinite polishing.
+
+**Contrasts worth naming explicitly:**
+
+- **Logic bugs vs. judgment reversals are different failure categories
+  needing different gates.** Most of Tasks 6-30 were binary — wrong
+  output, crash, overflow — where TDD/review are the right tool. Tasks
+  33-35 and the two-pane VDP episode are a different category: nothing
+  was *wrong*, a human just preferred something else after seeing it
+  live. Running both categories through the identical TDD→review→commit
+  pipeline is what produced the reversal churn — polish-tier tasks
+  likely need a "look at the real render first" step *before* the
+  correctness gate, not sequenced identically to logic tasks.
+- **"Assumed compatible" vs. "confirmed compatible" reuse.** The
+  sibling-repo proxy-URL shortcut (Task 10) and the git-init gap are the
+  same failure shape: assuming an existing thing (another app's infra, a
+  prior session's setup) was already handled, without checking. Contrast
+  Task 15/15b, where nothing was assumed and each piece was verified
+  independently before being relied on.
+- **"My test can't reproduce it" is evidence of a harness gap, not
+  evidence the bug doesn't exist** — stated explicitly in the Task 38
+  entry itself, and it's the same lesson Task 39's real-device pass and
+  the dealer-name bug both independently teach. Worth treating as one
+  named principle rather than three separate incidents.
+- **Architecture-level bugs vs. unit-level bugs get caught by different
+  mechanisms.** Task 13's `buildAppRouter()` recreation bug (a second
+  `ref.watch` silently breaking routing several lines away) is
+  structurally invisible to a unit test — nothing about the isolated
+  function was wrong. Only whole-diff review caught it. Most other bugs
+  in this log *were* test-catchable. Concrete evidence that dual review
+  catches a genuinely different bug category than TDD, not a redundant
+  safety net over the same one.
+- **Deferred-and-tracked vs. deferred-and-never-enumerated.**
+  `possible-to-dos.md`'s C1-C7/G1-G5 discipline (every deferred idea
+  named, reasoned, with a promotion path) kept scope honest for the
+  whole build — but the deploy-size bug shows that discipline only
+  covers things someone thought to write down. A periodic "what haven't
+  we checked" pass, not just "what have we deferred," might have caught
+  it sooner.
