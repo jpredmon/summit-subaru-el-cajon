@@ -1248,3 +1248,49 @@ Both of these were flagged by the required per-task review, verified against
   across two test files, not a single failing assertion, and fixing
   every one was mechanical (add `{int? maxWidth}`, ignore it in the
   body) rather than a sign the design was wrong.
+
+## 2026-07-13 — Retrospective: was the CORS proxy worthwhile?
+
+Not a new-concept entry — a bird's-eye review of how the CORS problem was
+actually handled across the build, prompted by asking directly rather than
+assuming the earlier work was sound.
+
+- **It was anticipated in planning, not discovered painfully mid-build.**
+  `docs/context/original-request.md:52-61` and `docs/SPEC.md:53-95` both
+  document VINCUE's broken doubled `Access-Control-Allow-Origin` header,
+  that it blocks any cross-origin browser call, and that the fix is a
+  per-target build switch (web → proxy, native → direct) *before* Task 1
+  started. The architecture that shipped (`lib/config.dart`'s resolver,
+  Task 15; the Vercel proxy, Task 15b) matches that plan — nothing here
+  was retrofitted after a surprise.
+- **"CORS" in a browser console is a symptom label, not a diagnosis —
+  two genuinely different bugs both got reported that way.** The real
+  CORS bug (VINCUE's doubled header) is one thing; a dead vehicle-photo
+  link returning a real HTTP 500 from VINCUE's own image CDN is a
+  completely separate bug that *also* surfaces as "blocked by CORS,"
+  because a browser reports any cross-origin failure with no
+  `Access-Control-Allow-Origin` header that way regardless of the real
+  server-side cause (see the "Bug fix: dealer name missing" entry
+  above). Both trace back to VINCUE, but conflating them would have sent
+  a fix at the proxy/config layer for something the existing
+  `VehiclePhoto` placeholder fallback (Task 8) already handled. Telling
+  them apart took a direct `curl -I`, not assumption.
+- **The one real misstep, self-caught within the same task:** Task 10
+  first tried pointing this app's dev build at the sibling React app's
+  *already-deployed* proxy URL as a shortcut, before confirming (via
+  `curl`) that proxy sets no CORS header at all because it's only ever
+  called same-origin by that app — a different app calling it
+  cross-origin gets rejected the same way VINCUE's raw API does. Cheap
+  to rule out, but worth naming as the pattern to skip next time: a
+  proxy "already working" for a *different* app doesn't transfer to a
+  new consumer without checking same-origin-vs-cross-origin first.
+- **Conclusion: yes, worthwhile — closer to mandatory than optional.**
+  The proxy is what made the *primary dev loop* possible at all (no
+  Android emulator on this machine, so Flutter Web in a browser was the
+  main iteration loop, and VINCUE's header bug blocks that without a
+  proxy in front of it) and what makes the live deployed link
+  (`https://flutterinventory.vercel.app`) actually load data for a
+  reviewer's browser. Native Android bypasses it entirely by design
+  (direct call, no proxy) — the proxy's value is scoped exactly to the
+  one target (browser) that actually has the problem, not blanket
+  infrastructure.
