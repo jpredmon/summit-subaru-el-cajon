@@ -1,8 +1,8 @@
 # Summit Subaru El Cajon
 
-A Flutter/Dart port of [VincueInventoryChallenge](../VincueInventoryChallenge) — a VINCUE dealer inventory browser (search results grid + vehicle details page) targeting Flutter Web and Android, built for full feature parity with the finished web app: caching, paging, filtering, dark mode, accessibility, and resilience UX.
-
 **Live:** https://flutterinventory.vercel.app
+
+A Flutter/Dart port of [VincueInventoryChallenge](../VincueInventoryChallenge) — a VINCUE dealer inventory browser (search results grid + vehicle details page) targeting Flutter Web and Android, built for full feature parity with the finished web app: caching, paging, filtering, dark mode, accessibility, and resilience UX.
 
 ## Status
 
