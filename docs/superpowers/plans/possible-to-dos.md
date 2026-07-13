@@ -1,9 +1,11 @@
 # To-dos
 
-**Status: NOT approved scope — optional, pick up if/when there's time.**
-Everything below is one list: C1-C7 are optional extra features, G1-G5 are
-real-world robustness gaps found during a review pass (most already done).
-None of it is active work unless promoted below.
+**Status: NOT approved scope.** Everything below is one list: C1-C7 are
+optional extra features, G1-G5 are real-world robustness gaps found during
+a review pass (most already done).
+
+**C1-C7: skipped (JP's call, 2026-07-13) — not being built.** Kept below
+for reference only, in case any get picked up later.
 
 Per this project's scope discipline: none of these may be silently folded into
 the active task loop. To pick one up, first add a matching entry to

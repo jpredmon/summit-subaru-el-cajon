@@ -76,11 +76,10 @@ Built with the same rigor as the reference React app, adapted for a task-loop wo
 ## Known limitations
 
 - **A handful of VINCUE photo links are dead** (confirmed via direct `curl` — real upstream 500s, not a bug in this app) — `VehiclePhoto`'s existing placeholder fallback (Task 8) already handles this gracefully.
-- **`integration_test` E2E coverage is two flows, not comprehensive** — a large-inventory scroll/filter/clear flow and a fetch-failure/Retry flow, both verified on a real Pixel 2. VDP navigation, the photo carousel, pagination, empty-results, and URL sync have no real-device coverage yet; candidates logged in `docs/superpowers/plans/possible-to-dos.md` (C7).
-- **SRP thumbnail disk-cache sizing (G4)** — SRP grid thumbnails now request a capped resize (`maxWidth`) from the image cache instead of the CDN's full-resolution original; the VDP carousel is intentionally left uncapped for quality.
-- A handful of optional extra features (Hero transitions, pull-to-refresh, an auto-hiding header, golden tests, platform-native polish) are deliberately parked, not missing — see `possible-to-dos.md`'s C1-C6.
+- **`integration_test` E2E coverage is two flows, not comprehensive** — a large-inventory scroll/filter/clear flow and a fetch-failure/Retry flow, both verified on a real Pixel 2. VDP navigation, the photo carousel, pagination, empty-results, and URL sync have no real-device coverage yet.
+- **A handful of optional extra features (Hero transitions, pull-to-refresh, an auto-hiding header, golden tests, platform-native polish, additional `integration_test` flows) were considered and are not being built** — see `docs/superpowers/plans/possible-to-dos.md`'s C1-C7 for what each would have involved.
 
-Everything else — retry-on-failure, disk-level image caching, pagination overflow at narrow widths, and the real-Android-device verification pass — was found, fixed, and verified live during the build; see the plan file for specifics (Tasks 27, 29, 36, and the device-pass notes throughout).
+Everything else — retry-on-failure, disk-level image caching, per-context photo cache sizing, pagination overflow at narrow widths, and the real-Android-device verification pass — was found, fixed, and verified live during the build; see the plan file for specifics (Tasks 27, 29, 36, and the device-pass notes throughout).
 
 ## Development notes
 
@@ -92,4 +91,4 @@ I've since updated my global Claude Code instructions (`~/.claude/CLAUDE.md`) to
 
 ## Tech stack
 
-Flutter/Dart · Riverpod · go_router · `http` · `shared_preferences` · `html` (description sanitization) · Vercel (Node serverless proxy + static hosting) · `vitest` (proxy tests) · `flutter_test`/`mocktail` (app tests)
+Flutter/Dart · Riverpod · go_router · `http` · `shared_preferences` · `html` (description sanitization) · `flutter_staggered_grid_view` (SRP masonry grid) · `cached_network_image` (disk-backed photo cache) · Vercel (Node serverless proxy + static hosting) · `vitest` (proxy tests) · `flutter_test`/`mocktail`/`integration_test` (app tests)
