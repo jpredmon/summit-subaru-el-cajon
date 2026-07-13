@@ -215,7 +215,7 @@ void main() {
       // show here.
       await tester.pump();
 
-      expect(find.text('1 vehicles'), findsOneWidget);
+      expect(find.text('1 vehicle'), findsOneWidget);
       expect(find.text('2 vehicles'), findsNothing);
     },
   );

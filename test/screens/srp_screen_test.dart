@@ -163,7 +163,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Failed to load inventory. Please try again later.'), findsNothing);
-    expect(find.text('1 vehicles'), findsOneWidget);
+    expect(find.text('1 vehicle'), findsOneWidget);
   });
 
   testWidgets('shows the vehicle count and a card per vehicle once loaded', (tester) async {
@@ -189,6 +189,24 @@ void main() {
     expect(find.text('2 vehicles'), findsOneWidget);
     expect(find.byType(VehicleCard), findsNWidgets(2));
     expect(find.text('Call for price'), findsOneWidget);
+  });
+
+  testWidgets('shows singular "1 vehicle" (not "1 vehicles") when exactly one matches', (tester) async {
+    final inventory = Inventory(vehicles: [vehicle(id: 1)], dealerName: 'Test Dealer');
+    await tester.pumpWidget(
+      _wrap(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            inventoryProvider.overrideWith((ref) => Future.value(inventory))],
+          child: const SrpScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('1 vehicle'), findsOneWidget);
+    expect(find.text('1 vehicles'), findsNothing);
   });
 
   testWidgets(
@@ -268,7 +286,7 @@ void main() {
     await tester.tap(find.text('Honda').last);
     await tester.pumpAndSettle();
 
-    expect(find.text('1 vehicles'), findsOneWidget);
+    expect(find.text('1 vehicle'), findsOneWidget);
     expect(find.byType(VehicleCard), findsOneWidget);
   });
 

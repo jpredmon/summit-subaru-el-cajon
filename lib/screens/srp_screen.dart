@@ -115,7 +115,10 @@ class _SrpBodyState extends ConsumerState<_SrpBody> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('${filtered.length} vehicles', style: Theme.of(context).textTheme.headlineSmall),
+          Text(
+            '${filtered.length} vehicle${filtered.length == 1 ? '' : 's'}',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
           const SizedBox(height: 16),
           _FilterBar(filters: srpState.filters, options: options, notifier: notifier),
           const SizedBox(height: 16),
