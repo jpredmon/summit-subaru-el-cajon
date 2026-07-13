@@ -117,12 +117,7 @@ class _SrpBodyState extends ConsumerState<_SrpBody> {
         children: [
           Text('${filtered.length} vehicles', style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 16),
-          _FilterBar(
-            filters: srpState.filters,
-            options: options,
-            notifier: notifier,
-            resultsEmpty: resultsEmpty,
-          ),
+          _FilterBar(filters: srpState.filters, options: options, notifier: notifier),
           const SizedBox(height: 16),
           Expanded(
             child: resultsEmpty
@@ -277,21 +272,11 @@ class _EmptyResults extends StatelessWidget {
 }
 
 class _FilterBar extends StatefulWidget {
-  const _FilterBar({
-    required this.filters,
-    required this.options,
-    required this.notifier,
-    required this.resultsEmpty,
-  });
+  const _FilterBar({required this.filters, required this.options, required this.notifier});
 
   final VehicleFilters filters;
   final FilterOptions options;
   final SrpStateNotifier notifier;
-
-  // Suppresses this bar's own Clear filters button while true -- when the
-  // filtered results are empty, _EmptyResults already shows a Clear filters
-  // control, and both being visible at once reads as a duplicate.
-  final bool resultsEmpty;
 
   @override
   State<_FilterBar> createState() => _FilterBarState();
@@ -316,16 +301,6 @@ class _FilterBarState extends State<_FilterBar> {
     final body = _buildBodyDropdown(context);
     final minPrice = _buildMinPriceDropdown(context);
     final maxPrice = _buildMaxPriceDropdown(context);
-    final hasActiveFilters = widget.filters.make != null ||
-        widget.filters.body != null ||
-        widget.filters.minPrice != null ||
-        widget.filters.maxPrice != null;
-    final showClearFilters = hasActiveFilters && !widget.resultsEmpty;
-    final clearFiltersButton = TextButton(
-      style: persistentLinkButtonStyle(context),
-      onPressed: widget.notifier.clearFilters,
-      child: const Text('Clear filters'),
-    );
 
     switch (windowSizeClass) {
       case WindowSizeClass.expanded:
@@ -336,30 +311,21 @@ class _FilterBarState extends State<_FilterBar> {
         // _dropdownContentWidth above) -- and only drops the next one to a
         // new line once it genuinely doesn't fit. The exact grouping
         // therefore depends on real content widths, not the viewport's
-        // window-size-class alone. Clear filters is just another Wrap
-        // child, so it reflows along with the dropdowns rather than being
-        // pinned to a fixed position.
+        // window-size-class alone.
         return Wrap(
           spacing: 12,
           runSpacing: 12,
-          children: [make, body, minPrice, maxPrice, if (showClearFilters) clearFiltersButton],
+          children: [make, body, minPrice, maxPrice],
         );
       case WindowSizeClass.compact:
         if (!_compactFiltersOpen) {
           return Align(
             alignment: Alignment.centerLeft,
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: [
-                TextButton(
-                  key: const Key('apply-filters-toggle'),
-                  style: persistentLinkButtonStyle(context),
-                  onPressed: () => setState(() => _compactFiltersOpen = true),
-                  child: const Text('Apply filters'),
-                ),
-                if (showClearFilters) clearFiltersButton,
-              ],
+            child: TextButton(
+              key: const Key('apply-filters-toggle'),
+              style: persistentLinkButtonStyle(context),
+              onPressed: () => setState(() => _compactFiltersOpen = true),
+              child: const Text('Apply filters'),
             ),
           );
         }
@@ -375,18 +341,11 @@ class _FilterBarState extends State<_FilterBar> {
             const SizedBox(height: 12),
             maxPrice,
             const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: [
-                TextButton(
-                  key: const Key('apply-filters-toggle'),
-                  style: persistentLinkButtonStyle(context),
-                  onPressed: () => setState(() => _compactFiltersOpen = false),
-                  child: const Text('Hide filters'),
-                ),
-                if (showClearFilters) clearFiltersButton,
-              ],
+            TextButton(
+              key: const Key('apply-filters-toggle'),
+              style: persistentLinkButtonStyle(context),
+              onPressed: () => setState(() => _compactFiltersOpen = false),
+              child: const Text('Hide filters'),
             ),
           ],
         );

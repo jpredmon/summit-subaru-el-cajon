@@ -1639,3 +1639,69 @@ paging/URL-sync work, VDP reachable with all four states correct.
   git commit -m "feat: hide header logo below 600px, single reversible switch (Task 35)"
   ```
 
+- [ ] **38. Fix `SliverMasonryGrid` crash under keyed child reuse** — real
+  bug, JP reported (with console stack trace + screenshot) after using the
+  filter-bar "Clear filters" button on the real production inventory (142
+  vehicles): `RenderSliverMasonryGrid.performLayout` threw `Unexpected null
+  value` (`flutter_staggered_grid_view-0.7.0/lib/src/rendering/
+  sliver_masonry_grid.dart:380`), leaving the SRP grid with blank gaps and
+  stale leftover card paint from before the filter change.
+
+  **Root cause (confirmed by reading the package source, not yet
+  reproduced via a failing test):** `srp_screen.dart`'s
+  `MasonryGridView.custom` sets `findChildIndexCallback` on its
+  `SliverChildBuilderDelegate` (added intentionally, see the comment at
+  `srp_screen.dart` around the grid's `childrenDelegate`, to stop a
+  `VehicleCard`'s focus-highlight state from bleeding onto a different
+  vehicle occupying the same slot after a filter/page change). That makes
+  Flutter *move* an existing child's `RenderObject` to a new index instead
+  of rebuilding it. `flutter_staggered_grid_view` 0.7.0 (latest on
+  pub.dev, unmaintained since 2023) only guards a *null* `layoutOffset`
+  for the sliver's `firstChild` (`sliver_masonry_grid.dart:303-309`, "A
+  firstChild with null layout offset is likely a result of children
+  reordering") — the loop right after it, which populates per-column
+  scroll offsets for the rest of the mounted children
+  (`sliver_masonry_grid.dart:377-387`), assumes every other child already
+  has a valid offset from a prior layout pass and null-checks it
+  unconditionally. Three synthetic `flutter_test` repro attempts (plain
+  dropdown swap, dropdown swap with the grid pre-scrolled, and the exact
+  142-vehicle Clear-filters flow with the grid pre-scrolled) did **not**
+  reproduce the crash — real network image load timing via
+  `cached_network_image` (test vehicles have empty `photos` lists) or
+  real-browser scroll/resize timing are the likely missing ingredients,
+  so this needs either a live repro (`flutter run -d web-server`) or a
+  test harness that can inject real async image timing before a fix can
+  be verified against a real failing test.
+
+  **Not the same bug as this button existing at all:** the SRP's
+  make/body/price dropdowns (`_buildMakeDropdown` etc.) go through the
+  identical rebuild-with-different-items path and the identical
+  `findChildIndexCallback`-wired delegate, so the same crash class is
+  structurally reachable through core, non-optional filtering — not just
+  through the now-reverted filter-bar "Clear filters" button.
+
+  **Interim mitigation (done, this session):** reverted the filter-bar's
+  own "Clear filters" button (`e55bebe`, `7f87a99`, and the corresponding
+  piece of `b6b454e`) back to how it was before — "Clear filters" is only
+  offered in the empty-results panel, where the grid isn't mounted at all
+  (so there's nothing to reorder). This removes one trigger path and
+  matches the real report exactly, but does **not** close the dropdown
+  path above. `docs/SPEC.md`'s Resilience UX bullet updated to match.
+
+  **Real fix options (not yet decided — discuss with JP before
+  starting):**
+  1. Drop `findChildIndexCallback` from the grid's delegate entirely.
+     Closes every path through this bug (dropdowns included). Trade-off:
+     reintroduces the focus-highlight state-bleed bug it was added to fix
+     (Task 14c).
+  2. Fork/patch `RenderSliverMasonryGrid` into this repo's own code,
+     adding the missing null guard for mid-list moved/new children
+     (mirroring the existing `firstChild` guard). Keeps both the masonry
+     layout and the focus-state fix. Takes on maintenance of forked
+     third-party rendering code.
+  3. Switch the SRP grid off `flutter_staggered_grid_view` entirely (e.g.
+     a hand-rolled masonry layout or a different package). Biggest
+     change, but sidesteps depending on an unmaintained package (0.7.0
+     published 2023, no newer version on pub.dev) for a load-bearing
+     piece of layout.
+
