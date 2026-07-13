@@ -905,7 +905,9 @@ void main() {
       expect(find.byKey(const Key('make-filter')), findsNothing);
     });
 
-    testWidgets('compact (360px): tapping Apply filters reveals all 4 stacked, live-filters, and folds back away', (tester) async {
+    testWidgets('compact (360px): tapping Apply filters reveals the dropdowns, live-filters, and folds back away', (
+      tester,
+    ) async {
       await pumpAt(tester, 360);
 
       await tester.tap(find.byKey(const Key('apply-filters-toggle')));
@@ -913,9 +915,6 @@ void main() {
 
       expect(find.byKey(const Key('make-filter')), findsOneWidget);
       expect(find.byKey(const Key('body-filter')), findsOneWidget);
-      final makeTop = tester.getTopLeft(find.byKey(const Key('make-filter'))).dy;
-      final bodyTop = tester.getTopLeft(find.byKey(const Key('body-filter'))).dy;
-      expect(bodyTop, greaterThan(makeTop));
 
       // Live filtering unchanged: selecting a make while the panel is open
       // updates the grid immediately, no separate commit step.
@@ -933,6 +932,113 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('make-filter')), findsNothing);
     });
+
+    testWidgets(
+      'compact (393px, real phone width): with the shortened compact-only labels, all 4 dropdowns '
+      'reflow into a clean 2-rows-of-2 (make+body, then min+max price) -- the layout JP found on a '
+      'real Pixel 2',
+      (tester) async {
+        await pumpAt(tester, 393);
+
+        await tester.tap(find.byKey(const Key('apply-filters-toggle')));
+        await tester.pumpAndSettle();
+
+        final makeTop = tester.getTopLeft(find.byKey(const Key('make-filter'))).dy;
+        final bodyTop = tester.getTopLeft(find.byKey(const Key('body-filter'))).dy;
+        final minPriceTop = tester.getTopLeft(find.byKey(const Key('min-price-filter'))).dy;
+        final maxPriceTop = tester.getTopLeft(find.byKey(const Key('max-price-filter'))).dy;
+        // Verified empirically at this width: shortened "Makes"/"Body
+        // styles" (compact-only) are narrow enough to share row one, and
+        // min/max price (already narrow, ~169px cap each) share row two --
+        // not a hardcoded "2 and 2" grouping, still the same organic Wrap
+        // reflow as every other tier, this is just what the real content
+        // widths happen to produce at this width.
+        expect(bodyTop, equals(makeTop));
+        expect(minPriceTop, greaterThan(makeTop));
+        expect(maxPriceTop, equals(minPriceTop));
+      },
+    );
+
+    testWidgets(
+      'compact (360px): unselected make/body dropdowns show shortened "Makes"/"Body styles" text, '
+      'not the full "All makes"/"All body styles" -- "All" is inferable, mobile-only (Task 40 '
+      'follow-up)',
+      (tester) async {
+        await pumpAt(tester, 360);
+
+        await tester.tap(find.byKey(const Key('apply-filters-toggle')));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Makes'), findsOneWidget);
+        expect(find.text('Body styles'), findsOneWidget);
+        expect(find.text('All makes'), findsNothing);
+        expect(find.text('All body styles'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'medium (700px) and expanded (1400px): unselected make/body dropdowns keep the full '
+      '"All makes"/"All body styles" text -- the shortened compact-only labels do not leak wider',
+      (tester) async {
+        await pumpAt(tester, 700);
+        expect(find.text('All makes'), findsOneWidget);
+        expect(find.text('All body styles'), findsOneWidget);
+        expect(find.text('Makes'), findsNothing);
+        expect(find.text('Body styles'), findsNothing);
+
+        await pumpAt(tester, 1400);
+        expect(find.text('All makes'), findsOneWidget);
+        expect(find.text('All body styles'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'compact (360px): with the shortened labels, make and body now share a row too '
+      '(not just min/max price)',
+      (tester) async {
+        await pumpAt(tester, 360);
+
+        await tester.tap(find.byKey(const Key('apply-filters-toggle')));
+        await tester.pumpAndSettle();
+
+        final makeTop = tester.getTopLeft(find.byKey(const Key('make-filter'))).dy;
+        final bodyTop = tester.getTopLeft(find.byKey(const Key('body-filter'))).dy;
+        expect(bodyTop, equals(makeTop));
+      },
+    );
+
+    testWidgets('selecting an actual make still shows the real make name, not the shortened placeholder', (
+      tester,
+    ) async {
+      await pumpAt(tester, 360);
+
+      await tester.tap(find.byKey(const Key('apply-filters-toggle')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('make-filter')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Honda').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Honda'), findsOneWidget);
+      expect(find.text('Makes'), findsNothing);
+    });
+
+    testWidgets(
+      'compact, open: the Hide filters button is part of the same Wrap as the dropdowns, able to '
+      'share a row when space allows, not pinned in its own separate row below',
+      (tester) async {
+        await pumpAt(tester, 360);
+
+        await tester.tap(find.byKey(const Key('apply-filters-toggle')));
+        await tester.pumpAndSettle();
+
+        Element wrapAncestorOf(Finder finder) =>
+            find.ancestor(of: finder, matching: find.byType(Wrap)).evaluate().first;
+        final hideFiltersWrap = wrapAncestorOf(find.text('Hide filters'));
+        final maxPriceWrap = wrapAncestorOf(find.byKey(const Key('max-price-filter')));
+        expect(hideFiltersWrap, equals(maxPriceWrap));
+      },
+    );
   });
 
   group('Clear filters control in the empty-results panel', () {

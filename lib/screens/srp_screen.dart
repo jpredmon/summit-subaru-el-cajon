@@ -305,8 +305,8 @@ class _FilterBarState extends State<_FilterBar> {
   @override
   Widget build(BuildContext context) {
     final windowSizeClass = windowSizeClassOf(MediaQuery.sizeOf(context).width);
-    final make = _buildMakeDropdown(context);
-    final body = _buildBodyDropdown(context);
+    final make = _buildMakeDropdown(context, windowSizeClass);
+    final body = _buildBodyDropdown(context, windowSizeClass);
     final minPrice = _buildMinPriceDropdown(context);
     final maxPrice = _buildMaxPriceDropdown(context);
 
@@ -337,18 +337,23 @@ class _FilterBarState extends State<_FilterBar> {
             ),
           );
         }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
+        // Same organic-reflow Wrap as expanded/medium (not a forced
+        // one-per-row stack) -- real phone widths often fit 2+ dropdowns
+        // per row (e.g. the two price dropdowns, each much narrower than
+        // make/body's caps), and forcing 4+1 separate rows wasted that
+        // space. Hide filters is just another Wrap child (JP's call) so it
+        // can share a row with whichever dropdown ends up last, instead of
+        // always being pinned to its own row below. The exact grouping
+        // still depends on each item's real current content width, same
+        // as every other tier -- not a hardcoded split.
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
           children: [
             make,
-            const SizedBox(height: 12),
             body,
-            const SizedBox(height: 12),
             minPrice,
-            const SizedBox(height: 12),
             maxPrice,
-            const SizedBox(height: 12),
             TextButton(
               key: const Key('apply-filters-toggle'),
               style: persistentLinkButtonStyle(context),
@@ -389,10 +394,14 @@ class _FilterBarState extends State<_FilterBar> {
     return candidate != null && validOptions.contains(candidate) ? candidate : null;
   }
 
-  Widget _buildMakeDropdown(BuildContext context) {
+  Widget _buildMakeDropdown(BuildContext context, WindowSizeClass windowSizeClass) {
     final style = Theme.of(context).textTheme.titleMedium!;
     final value = _validValue(widget.filters.make, widget.options.makes);
-    final text = value ?? 'All makes';
+    // "All" is inferable, so it's dropped at compact width -- the shorter
+    // label is also what lets this dropdown fit alongside body style on
+    // the same row at real phone widths (JP, real-device finding).
+    final unselectedLabel = windowSizeClass == WindowSizeClass.compact ? 'Makes' : 'All makes';
+    final text = value ?? unselectedLabel;
     return Semantics(
       label: 'Make',
       child: SizedBox(
@@ -403,7 +412,7 @@ class _FilterBarState extends State<_FilterBar> {
           key: const Key('make-filter'),
           value: value,
           items: [
-            const DropdownMenuItem<String?>(value: null, child: Text('All makes', overflow: TextOverflow.ellipsis)),
+            DropdownMenuItem<String?>(value: null, child: Text(unselectedLabel, overflow: TextOverflow.ellipsis)),
             ...widget.options.makes.map(
               (make) => DropdownMenuItem<String?>(value: make, child: Text(make, overflow: TextOverflow.ellipsis)),
             ),
@@ -414,10 +423,12 @@ class _FilterBarState extends State<_FilterBar> {
     );
   }
 
-  Widget _buildBodyDropdown(BuildContext context) {
+  Widget _buildBodyDropdown(BuildContext context, WindowSizeClass windowSizeClass) {
     final style = Theme.of(context).textTheme.titleMedium!;
     final value = _validValue(widget.filters.body, widget.options.bodyStyles);
-    final text = value?.displayName ?? 'All body styles';
+    // Same "All" is inferable rationale as make, above.
+    final unselectedLabel = windowSizeClass == WindowSizeClass.compact ? 'Body styles' : 'All body styles';
+    final text = value?.displayName ?? unselectedLabel;
     return Semantics(
       label: 'Body style',
       child: SizedBox(
@@ -428,9 +439,9 @@ class _FilterBarState extends State<_FilterBar> {
           key: const Key('body-filter'),
           value: value,
           items: [
-            const DropdownMenuItem<BodyCategory?>(
+            DropdownMenuItem<BodyCategory?>(
               value: null,
-              child: Text('All body styles', overflow: TextOverflow.ellipsis),
+              child: Text(unselectedLabel, overflow: TextOverflow.ellipsis),
             ),
             ...widget.options.bodyStyles.map(
               (body) => DropdownMenuItem<BodyCategory?>(
