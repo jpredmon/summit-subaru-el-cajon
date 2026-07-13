@@ -10,7 +10,7 @@ import 'package:vincue_mobile/widgets/vehicle_photo.dart';
 /// offline simulation of a dead photo URL. Real network loading uses
 /// [CachedNetworkImageProvider] in production (the widget's default
 /// `imageProvider`, Task 36).
-ImageProvider _alwaysFailingImageProvider(String url) {
+ImageProvider _alwaysFailingImageProvider(String url, {int? maxWidth}) {
   return MemoryImage(Uint8List.fromList([1, 2, 3]));
 }
 
@@ -20,6 +20,22 @@ void main() {
   test('defaultVehiclePhotoProvider uses disk-backed caching (Task 36 / G2), '
       'not a plain NetworkImage', () {
     expect(defaultVehiclePhotoProvider('https://example.com/photo.jpg'), isA<CachedNetworkImageProvider>());
+  });
+
+  test(
+    'defaultVehiclePhotoProvider forwards a maxWidth hint to CachedNetworkImageProvider (G4) -- '
+    'this is what resizes the image on disk, not just in memory, so a thumbnail context genuinely '
+    'avoids caching the CDN\'s full-resolution original',
+    () {
+      final provider =
+          defaultVehiclePhotoProvider('https://example.com/photo.jpg', maxWidth: 560) as CachedNetworkImageProvider;
+      expect(provider.maxWidth, 560);
+    },
+  );
+
+  test('defaultVehiclePhotoProvider passes no maxWidth cap (null) when none is given, unchanged default', () {
+    final provider = defaultVehiclePhotoProvider('https://example.com/photo.jpg') as CachedNetworkImageProvider;
+    expect(provider.maxWidth, isNull);
   });
 
   testWidgets('shows the placeholder when photoUrl is null', (tester) async {
@@ -70,13 +86,59 @@ void main() {
     expect(fittedBox.fit, BoxFit.fitWidth);
   });
 
+  testWidgets(
+    'forwards its own maxWidth hint through to the image provider (G4) -- structural proof via an '
+    'injected fake provider capturing its arguments, not just checking the default builder in '
+    'isolation',
+    (tester) async {
+      int? capturedMaxWidth;
+      await tester.pumpWidget(
+        _wrap(
+          VehiclePhoto(
+            photoUrl: 'https://example.com/car.jpg',
+            semanticLabel: '2020 Honda Accord',
+            maxWidth: 280,
+            imageProvider: (url, {maxWidth}) {
+              capturedMaxWidth = maxWidth;
+              return MemoryImage(Uint8List.fromList(_onePixelPng));
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(capturedMaxWidth, 280);
+    },
+  );
+
+  testWidgets('passes no maxWidth (null) to the image provider when none is given, unchanged default', (
+    tester,
+  ) async {
+    int? capturedMaxWidth = -1; // sentinel distinct from "never called"
+    await tester.pumpWidget(
+      _wrap(
+        VehiclePhoto(
+          photoUrl: 'https://example.com/car.jpg',
+          semanticLabel: '2020 Honda Accord',
+          imageProvider: (url, {maxWidth}) {
+            capturedMaxWidth = maxWidth;
+            return MemoryImage(Uint8List.fromList(_onePixelPng));
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(capturedMaxWidth, isNull);
+  });
+
   testWidgets('renders the photo when a valid image loads successfully', (tester) async {
     await tester.pumpWidget(
       _wrap(
         VehiclePhoto(
           photoUrl: 'https://example.com/car.jpg',
           semanticLabel: '2020 Honda Accord',
-          imageProvider: (url) => MemoryImage(Uint8List.fromList(_onePixelPng)),
+          imageProvider: (url, {maxWidth}) => MemoryImage(Uint8List.fromList(_onePixelPng)),
         ),
       ),
     );
@@ -112,7 +174,7 @@ void main() {
           VehiclePhoto(
             photoUrl: null,
             semanticLabel: 'Vehicle photo',
-            imageProvider: (url) => throw StateError('imageProvider should not be called'),
+            imageProvider: (url, {maxWidth}) => throw StateError('imageProvider should not be called'),
           ),
         ),
       );
@@ -129,7 +191,7 @@ void main() {
           VehiclePhoto(
             photoUrl: '',
             semanticLabel: 'Vehicle photo',
-            imageProvider: (url) => throw StateError('imageProvider should not be called'),
+            imageProvider: (url, {maxWidth}) => throw StateError('imageProvider should not be called'),
           ),
         ),
       );
@@ -159,7 +221,7 @@ void main() {
           VehiclePhoto(
             photoUrl: 'https://example.com/car.jpg',
             semanticLabel: 'Photo B',
-            imageProvider: (url) => MemoryImage(Uint8List.fromList(_onePixelPng)),
+            imageProvider: (url, {maxWidth}) => MemoryImage(Uint8List.fromList(_onePixelPng)),
           ),
         ),
       );
@@ -179,7 +241,7 @@ void main() {
           VehiclePhoto(
             photoUrl: '   ',
             semanticLabel: 'Vehicle photo',
-            imageProvider: (url) => MemoryImage(Uint8List.fromList(_onePixelPng)),
+            imageProvider: (url, {maxWidth}) => MemoryImage(Uint8List.fromList(_onePixelPng)),
           ),
         ),
       );

@@ -11,8 +11,10 @@ const double kVehiclePhotoAspectRatio = 4 / 3;
 /// Builds the [ImageProvider] for a given photo URL. Defaults to
 /// [CachedNetworkImageProvider] in production; tests inject a builder that
 /// fails deterministically to exercise the placeholder fallback without
-/// hitting the network.
-typedef VehiclePhotoProviderBuilder = ImageProvider Function(String url);
+/// hitting the network. [maxWidth], when given, is a resize-on-disk hint
+/// (G4) — passed through to [CachedNetworkImageProvider.maxWidth], which
+/// actually shrinks what's cached on disk, not just the in-memory decode.
+typedef VehiclePhotoProviderBuilder = ImageProvider Function(String url, {int? maxWidth});
 
 /// Default [VehiclePhotoProviderBuilder] — [CachedNetworkImageProvider],
 /// which persists a downloaded photo to disk (Task 36 / G2) instead of only
@@ -20,7 +22,8 @@ typedef VehiclePhotoProviderBuilder = ImageProvider Function(String url);
 /// Vincue's CDN on every app relaunch. Public so other widgets embedding
 /// [VehiclePhoto] (e.g. [PhotoCarousel], Task 11) can reference the same
 /// default rather than duplicating it.
-ImageProvider defaultVehiclePhotoProvider(String url) => CachedNetworkImageProvider(url);
+ImageProvider defaultVehiclePhotoProvider(String url, {int? maxWidth}) =>
+    CachedNetworkImageProvider(url, maxWidth: maxWidth);
 
 /// Shared photo widget for the SRP card (Task 9) and VDP carousel (Task 11).
 /// Shows a placeholder when [photoUrl] is null/empty *or* when the photo
@@ -31,11 +34,18 @@ class VehiclePhoto extends StatelessWidget {
     required this.photoUrl,
     required this.semanticLabel,
     this.imageProvider = defaultVehiclePhotoProvider,
+    this.maxWidth,
   });
 
   final String? photoUrl;
   final String semanticLabel;
   final VehiclePhotoProviderBuilder imageProvider;
+
+  /// Resize-on-disk hint (G4) forwarded to [imageProvider] — null (the
+  /// default) means no cap, full quality. [VehicleCard] (an SRP grid
+  /// thumbnail) passes a smaller value; [PhotoCarousel] (the larger VDP
+  /// display) leaves this null.
+  final int? maxWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -54,7 +64,7 @@ class VehiclePhoto extends StatelessWidget {
                 // one can get stuck showing the stale placeholder. Same
                 // reason the web app's PhotoCarousel keys its <img> by index.
                 key: ValueKey(url),
-                image: imageProvider(url),
+                image: imageProvider(url, maxWidth: maxWidth),
                 fit: BoxFit.cover,
                 semanticLabel: semanticLabel,
                 errorBuilder: (context, error, stackTrace) => const _PlaceholderPhoto(),
@@ -76,7 +86,7 @@ class _PlaceholderPhoto extends StatelessWidget {
       child: Container(
         // Literal white, not the theme's adaptive surface color -- matches
         // the logo's own white canvas it was designed/exported against
-        // (above-and-beyond branding, docs/superpowers/specs, header-logo
+        // (branding decision, docs/superpowers/specs, header-logo
         // design note).
         color: Colors.white,
         alignment: Alignment.center,

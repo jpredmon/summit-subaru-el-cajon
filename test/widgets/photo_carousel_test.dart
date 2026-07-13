@@ -8,11 +8,15 @@ import 'package:vincue_mobile/widgets/vehicle_photo.dart';
 /// Always resolves to invalid image bytes, so `Image`'s decoder rejects it
 /// and `errorBuilder` fires — same deterministic-failure technique as
 /// vehicle_photo_test.dart (Task 8).
-ImageProvider _alwaysFailingImageProvider(String url) {
+// `maxWidth` is required to satisfy VehiclePhotoProviderBuilder's shape
+// (G4), not used by this fake -- these tests aren't about resize behavior.
+// ignore: unused_element_parameter
+ImageProvider _alwaysFailingImageProvider(String url, {int? maxWidth}) {
   return MemoryImage(Uint8List.fromList([1, 2, 3]));
 }
 
-ImageProvider _workingImageProvider(String url) {
+// ignore: unused_element_parameter
+ImageProvider _workingImageProvider(String url, {int? maxWidth}) {
   return MemoryImage(Uint8List.fromList(_onePixelPng));
 }
 
@@ -53,6 +57,16 @@ void main() {
 
     expect(tester.widget<VehiclePhoto>(find.byType(VehiclePhoto)).photoUrl, 'a.jpg');
   });
+
+  testWidgets(
+    'does not cap maxWidth for its VehiclePhoto (G4) -- the VDP carousel is a larger display '
+    'context than an SRP thumbnail and should not lose quality',
+    (tester) async {
+      await _pump(tester, const PhotoCarousel(photos: ['a.jpg']));
+
+      expect(tester.widget<VehiclePhoto>(find.byType(VehiclePhoto)).maxWidth, isNull);
+    },
+  );
 
   testWidgets('shows a "1 of 3" counter when multiple photos are present', (tester) async {
     await _pump(tester, const PhotoCarousel(photos: ['a.jpg', 'b.jpg', 'c.jpg']));
@@ -117,7 +131,7 @@ void main() {
 
   testWidgets('recovers when navigating away from a failed photo to one that loads', (tester) async {
     var callCount = 0;
-    ImageProvider provider(String url) {
+    ImageProvider provider(String url, {int? maxWidth}) {
       callCount++;
       // Only the first photo (first resolution) fails; every other
       // resolution (including a later revisit) succeeds -- proves the
@@ -141,7 +155,7 @@ void main() {
     '(not just moving to a different index)',
     (tester) async {
       var aResolutionCount = 0;
-      ImageProvider provider(String url) {
+      ImageProvider provider(String url, {int? maxWidth}) {
         if (url == 'a.jpg') {
           aResolutionCount++;
           // a.jpg fails only its first-ever resolution; a later revisit to
@@ -172,7 +186,7 @@ void main() {
     '(per-index tracking, not per-URL)',
     (tester) async {
       var callCount = 0;
-      ImageProvider provider(String url) {
+      ImageProvider provider(String url, {int? maxWidth}) {
         callCount++;
         // Only the very first resolution (index 0's first attempt) fails;
         // every later resolution succeeds -- including index 1, which shares
@@ -310,7 +324,7 @@ void main() {
 
     testWidgets('recovers from a failed photo when navigating away via a ghost-chevron tap', (tester) async {
       var callCount = 0;
-      ImageProvider provider(String url) {
+      ImageProvider provider(String url, {int? maxWidth}) {
         callCount++;
         return callCount == 1 ? _alwaysFailingImageProvider(url) : _workingImageProvider(url);
       }
@@ -332,7 +346,7 @@ void main() {
 
     testWidgets('recovers from a failed photo when navigating away via a swipe', (tester) async {
       var callCount = 0;
-      ImageProvider provider(String url) {
+      ImageProvider provider(String url, {int? maxWidth}) {
         callCount++;
         return callCount == 1 ? _alwaysFailingImageProvider(url) : _workingImageProvider(url);
       }

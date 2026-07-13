@@ -83,6 +83,25 @@ void main() {
   });
 
   testWidgets(
+    'passes a thumbnail-sized maxWidth hint to VehiclePhoto (G4) -- an SRP grid thumbnail should '
+    "not disk-cache/decode the CDN's full-resolution original",
+    (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          VehicleCard(
+            vehicle: vehicle(photos: const ['https://example.com/car.jpg']),
+            onTap: () {},
+          ),
+        ),
+      );
+
+      final maxWidth = tester.widget<VehiclePhoto>(find.byType(VehiclePhoto)).maxWidth;
+      expect(maxWidth, isNotNull);
+      expect(maxWidth, lessThan(700));
+    },
+  );
+
+  testWidgets(
     'a long make/model/trim does not overflow the grid tile (280-wide, matching '
     "srp_screen.dart's max column width; unconstrained height, matching the masonry "
     "grid's real unbounded main axis -- the title's maxLines:1 ellipsis is what keeps "

@@ -6,6 +6,13 @@ import '../theme/app_theme.dart';
 import '../utils/format.dart';
 import 'vehicle_photo.dart';
 
+/// Resize-on-disk hint (G4) for this card's thumbnail -- the SRP masonry
+/// grid's own column cap is 280 logical px
+/// (`srp_screen.dart`'s `_srpGridDelegate`); doubled for high-DPI/retina
+/// screens so the cached copy still looks sharp there, while remaining far
+/// smaller than a typical full-resolution CDN original.
+const int _kThumbnailMaxWidth = 560;
+
 /// SRP grid card for one [Vehicle]. Tapping invokes [onTap] — the SRP screen
 /// wires this to VDP navigation once routing exists (Task 10).
 ///
@@ -85,6 +92,7 @@ class _VehicleCardState extends State<VehicleCard> {
                   semanticLabel: hasPhoto
                       ? '${vehicle.year} ${vehicle.make} ${vehicle.model}'
                       : 'No photo available',
+                  maxWidth: _kThumbnailMaxWidth,
                 ),
                 Padding(
                   padding: const EdgeInsets.all(12),
