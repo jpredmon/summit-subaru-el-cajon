@@ -1,10 +1,12 @@
 # Above-and-beyond candidates (Flutter-flex features)
 
-**Status: NOT approved scope.** These are optional "prove myself" features to
-consider *after* the core build (Tasks 14b–16) is done and if time allows.
-Each one is chosen because it's notably easier in Flutter than in the React web
-version — a concrete "React can't do this cleanly, Flutter does it in a few
-lines" story for the hiring submission.
+**Status: NOT approved scope — this is JP's "maybe-do-it-later" list
+(2026-07-12).** C1-C6 below are optional "prove myself" features to
+consider *after* the core build (Tasks 14b–16) is done and if time allows,
+not active work. Each one is chosen because it's notably easier in Flutter
+than in the React web version — a concrete "React can't do this cleanly,
+Flutter does it in a few lines" story for the hiring submission (C6 is the
+exception — deferred effort/cost, not a React-parity story).
 
 Per this project's scope discipline: none of these may be silently folded into
 the active task loop. To pick one up, first add a matching entry to
@@ -116,6 +118,30 @@ web app can't render true platform-native controls at all.
 resolver directly, no device needed — mirrors Task 15's define-resolver pattern).
 
 **New concept:** `dynamic_color` / `CorePalette`; `.adaptive` constructors.
+
+---
+
+## C6. Auto-hiding header on scroll direction — deferred (JP's call, 2026-07-12)
+
+**The ask:** header disappears scrolling down, reappears scrolling up (the
+"Quick Return" pattern; Android's native equivalent is `AppBarLayout`'s
+`app:layout_scrollFlags="scroll|enterAlways|snap"`). Last of the 4 items in
+the approved above-and-beyond polish plan
+(`C:\Users\Student\.claude\plans\1-in-vdp-in-the-frolicking-volcano.md`,
+Item 4) — the other 3 are done (Items 2/3 → Tasks 37/40; Item 1 superseded
+by Task 41's simpler photo-shrink alternative). **JP explicitly does not
+want this one done now** — parking it here rather than in the active plan.
+
+Approach already scoped in that plan file if picked up later: the idiomatic
+`SliverAppBar(floating: true, snap: true)` was confirmed descoped (would
+mean restructuring `AppShell` + both screens around a shared
+`NestedScrollView`, a real multi-file architectural change, since
+`lib/widgets/app_shell.dart`'s `AppBar` currently sits above each screen's
+own separately-scrolling body with no shared scroll view). Chosen
+alternative instead: wrap `AppShell.build`'s routed `child` in a
+`NotificationListener<UserScrollNotification>` (bubbles up regardless of
+how deep the actual scrollable is, no restructuring of `SrpScreen`/
+`VdpScreen` needed) and hide/reveal the header on scroll direction.
 
 ---
 
