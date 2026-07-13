@@ -1042,3 +1042,37 @@ Both of these were flagged by the required per-task review, verified against
   provider is configured") rather than a false promise to verify actual
   disk persistence, which isn't practical in a fast, deterministic,
   offline test suite.
+
+## 2026-07-12 — Task 37: Persistent button styling at compact widths (G5)
+
+- **`ButtonStyle`/`TextButton.styleFrom` don't change a widget's runtime
+  type.** Passing `style: someButtonStyle` to an existing
+  `TextButton(...)` constructor call is still a `TextButton` at runtime —
+  `find.widgetWithText(TextButton, 'Previous')`-style test selectors, and
+  `tester.widget<TextButton>(...)` casts, keep working unchanged. This is
+  why the fix could touch 9 call sites without rewriting any existing test
+  selector — only styling changed, not widget identity.
+- **A `ButtonStyle`'s properties are independent — setting one doesn't
+  imply the others.** `TextButton.styleFrom(backgroundColor: ...,
+  foregroundColor: ..., shape: ...)` only overrides those three
+  properties; padding and minimum tap-target size stay whatever the
+  ambient theme/Material-3 defaults already were. This mattered
+  concretely here: a persistent background fill could easily be assumed
+  to need more padding "to look intentional," but skipping that
+  assumption kept the button's actual layout footprint byte-for-byte
+  identical to before — meaning the existing 320px pagination-overflow
+  regression test needed no changes and carried real evidence, not just
+  hope, that nothing regressed.
+- **Reuse `ColorScheme` roles instead of inventing new colors.** Material
+  3's `ColorScheme.fromSeed` already derives a `primaryContainer`/
+  `onPrimaryContainer` pair designed for exactly this "filled but softer"
+  look (it's the same pairing `FilledButton.tonal` uses internally) — so
+  the fix didn't need a new hardcoded hex value, just referencing an
+  already-computed theme role.
+- **A width-gated helper function beats a blanket `TextButtonThemeData`
+  override.** The ask was compact-width-only; `ThemeData` itself has no
+  concept of the current viewport width, so a single reusable *function*
+  taking `BuildContext` (checking `windowSizeClassOf` internally, already
+  established elsewhere in this codebase) is what let every call site stay
+  a one-line diff (`style: persistentLinkButtonStyle(context)`) instead of
+  repeating a width check at each of the 9 sites.

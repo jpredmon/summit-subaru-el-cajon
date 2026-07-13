@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'breakpoints.dart';
+
 /// Shared corner radius for every interactive rectangle (buttons, selects, cards).
 const double kCardRadius = 12.0;
 
@@ -22,6 +24,27 @@ TextStyle tabularNumsStyle(TextStyle base) {
   return base.copyWith(
     fontFamily: _kDefaultFontFamily,
     fontFeatures: const [FontFeature.tabularFigures()],
+  );
+}
+
+/// Persistent filled background for a link-styled [TextButton] at compact
+/// width -- real Android device testing found plain-text `TextButton`s
+/// (pagination Next/Previous, Clear filters, etc.) easy to miss at phone
+/// widths, since Material 3's default only fills color transiently during
+/// the press ripple. `null` above the compact breakpoint, where the plain
+/// press-only styling is left as-is. Reuses the theme's own
+/// `primaryContainer`/`onPrimaryContainer` pairing (Material 3's own
+/// "tonal button" roles) rather than a new hardcoded color.
+ButtonStyle? persistentLinkButtonStyle(BuildContext context) {
+  if (windowSizeClassOf(MediaQuery.sizeOf(context).width) != WindowSizeClass.compact) {
+    return null;
+  }
+  final scheme = Theme.of(context).colorScheme;
+  return TextButton.styleFrom(
+    backgroundColor: scheme.primaryContainer,
+    foregroundColor: scheme.onPrimaryContainer,
+    disabledBackgroundColor: scheme.primaryContainer.withValues(alpha: 0.38),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kCardRadius)),
   );
 }
 

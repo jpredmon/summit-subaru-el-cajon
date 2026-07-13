@@ -142,12 +142,12 @@ the second read) asserts the loaded content replaces the error state.
 **New concept:** none new — idiomatic Riverpod cache invalidation,
 already used elsewhere in this codebase's pattern vocabulary.
 
-### G2. Disk-level image cache — promoted to Task 36 (2026-07-12)
+### G2. Disk-level image cache — DONE (Task 36, 2026-07-12)
 
-Not yet started. SPEC.md updated (new "Photo disk cache (G2)" bullet under
-Architecture decisions) and Task 36 added to
-`vincue-mobile-implementation.md`, per this file's own scope-discipline
-rule.
+SPEC.md updated (new "Photo disk cache (G2)" bullet under Architecture
+decisions) and Task 36 added to `vincue-mobile-implementation.md`, per this
+file's own scope-discipline rule. Left a follow-up gap, logged separately
+as **G4** below (no per-context image size cap).
 
 `Image.network`/`NetworkImage` gets Flutter's automatic in-memory
 `ImageCache` for free (fine within one session), but nothing persists
@@ -242,3 +242,25 @@ separate builders, one per context) before a fix is attempted.
 
 **New concept:** none new — same `ImageProvider` construction-parameter
 pattern already introduced by Task 36.
+
+### G5. Persistent button styling at compact widths — DONE (Task 37, 2026-07-12)
+
+Found via real Android device testing: every plain-text `TextButton`
+("Next"/"Previous," "Clear filters," "Back to search results," etc.) only
+fills with the theme's tan/amber-ish tint during the press ripple —
+Material 3's default `TextButton` styling, no persistent background. At
+real phone widths these read as easy-to-miss plain text, not buttons.
+
+Fixed with `persistentLinkButtonStyle(BuildContext)`
+(`lib/theme/app_theme.dart`) — returns `null` above the compact breakpoint
+(unchanged plain-link look), and at compact width a `TextButton.styleFrom`
+using the theme's own `primaryContainer`/`onPrimaryContainer` roles (no new
+hardcoded color) plus the existing `kCardRadius` shape. Applied to all 9
+`TextButton` call sites across `lib/screens/srp_screen.dart` and
+`lib/screens/vdp_screen.dart`. Deliberately only sets
+background/foreground/shape — no padding/size changes — so it carries zero
+layout-footprint risk against the existing 320px pagination-overflow
+regression test.
+
+**New concept:** none new — `ButtonStyle`/`TextButton.styleFrom`, an
+existing Flutter mechanism this codebase hadn't used yet.

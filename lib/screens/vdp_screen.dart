@@ -103,7 +103,11 @@ class _NotFound extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text('Vehicle not found.', style: Theme.of(context).textTheme.bodyLarge),
-          TextButton(onPressed: onBackToResults, child: const Text('Back to search results')),
+          TextButton(
+            style: persistentLinkButtonStyle(context),
+            onPressed: onBackToResults,
+            child: const Text('Back to search results'),
+          ),
         ],
       ),
     );
@@ -127,6 +131,7 @@ class _VdpBodyState extends State<_VdpBody> {
   Widget build(BuildContext context) {
     final vehicle = widget.vehicle;
     final backButton = TextButton(
+      style: persistentLinkButtonStyle(context),
       onPressed: widget.onBackToResults,
       child: const Text('Back to search results'),
     );
@@ -314,6 +319,7 @@ class _FeatureList extends StatelessWidget {
         ),
         if (isBounded)
           TextButton(
+            style: persistentLinkButtonStyle(context),
             onPressed: onToggle,
             child: Text(expanded ? 'Show less' : 'Show all (${features.length})'),
           ),

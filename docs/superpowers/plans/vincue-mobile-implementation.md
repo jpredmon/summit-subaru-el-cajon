@@ -1475,6 +1475,28 @@ paging/URL-sync work, VDP reachable with all four states correct.
   `above-and-beyond-candidates.md` per the project's scope-discipline rule
   (SPEC.md entry → numbered task → full loop), SPEC.md updated first (see
   the new "Photo disk cache (G2)" bullet under Architecture decisions).
+
+- [x] **37. Persistent button styling at compact widths (G5)** —
+  **Status: DONE**, confidence 90/100. Promoted from the G5 backlog entry
+  in `above-and-beyond-candidates.md` (JP's real-Android-device finding:
+  plain-text `TextButton`s only flash color on the press ripple, easy to
+  miss at phone widths). `persistentLinkButtonStyle(BuildContext)`
+  (`lib/theme/app_theme.dart`) returns `null` above the compact breakpoint
+  and a `TextButton.styleFrom` using the theme's own
+  `primaryContainer`/`onPrimaryContainer` roles + `kCardRadius` shape at
+  compact width — deliberately sets only background/foreground/shape, no
+  padding/size, so it carries zero layout-footprint risk against the
+  existing 320px pagination-overflow regression test. Applied to all 9
+  `TextButton` call sites (`lib/screens/srp_screen.dart`,
+  `lib/screens/vdp_screen.dart`). Sampled first on just
+  `_PaginationControls` (which already had a dedicated 320px test as an
+  instant feedback loop) before generalizing to the rest. New unit tests
+  in `test/theme/app_theme_test.dart`; full suite (275 tests) +
+  `flutter analyze` clean.
+
+  From the approved above-and-beyond polish plan
+  (`C:\Users\Student\.claude\plans\1-in-vdp-in-the-frolicking-volcano.md`),
+  Item 2 — lowest effort/risk of the 4 candidate items in that plan.
   `Image.network`/`NetworkImage` only benefits from Flutter's in-memory
   `ImageCache`, which is lost on every cold start — a real shipped app
   would otherwise re-download every vehicle photo (up to 34/141 real-photo

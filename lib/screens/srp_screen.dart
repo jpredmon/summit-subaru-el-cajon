@@ -266,7 +266,11 @@ class _EmptyResults extends StatelessWidget {
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         const Text('No vehicles match these filters. '),
-        TextButton(onPressed: onClearFilters, child: const Text('Clear filters')),
+        TextButton(
+          style: persistentLinkButtonStyle(context),
+          onPressed: onClearFilters,
+          child: const Text('Clear filters'),
+        ),
       ],
     );
   }
@@ -318,6 +322,7 @@ class _FilterBarState extends State<_FilterBar> {
         widget.filters.maxPrice != null;
     final showClearFilters = hasActiveFilters && !widget.resultsEmpty;
     final clearFiltersButton = TextButton(
+      style: persistentLinkButtonStyle(context),
       onPressed: widget.notifier.clearFilters,
       child: const Text('Clear filters'),
     );
@@ -349,6 +354,7 @@ class _FilterBarState extends State<_FilterBar> {
               children: [
                 TextButton(
                   key: const Key('apply-filters-toggle'),
+                  style: persistentLinkButtonStyle(context),
                   onPressed: () => setState(() => _compactFiltersOpen = true),
                   child: const Text('Apply filters'),
                 ),
@@ -375,6 +381,7 @@ class _FilterBarState extends State<_FilterBar> {
               children: [
                 TextButton(
                   key: const Key('apply-filters-toggle'),
+                  style: persistentLinkButtonStyle(context),
                   onPressed: () => setState(() => _compactFiltersOpen = false),
                   child: const Text('Hide filters'),
                 ),
@@ -563,11 +570,13 @@ class _PaginationControls extends StatelessWidget {
         runSpacing: 8,
         children: [
           TextButton(
+            style: persistentLinkButtonStyle(context),
             onPressed: currentPage > 1 ? () => onPageChange(currentPage - 1) : null,
             child: const Text('Previous'),
           ),
           Text('Page $currentPage of $totalPages', style: tabularNumsStyle(Theme.of(context).textTheme.bodyMedium!)),
           TextButton(
+            style: persistentLinkButtonStyle(context),
             onPressed: currentPage < totalPages ? () => onPageChange(currentPage + 1) : null,
             child: const Text('Next'),
           ),
