@@ -1849,3 +1849,50 @@ paging/URL-sync work, VDP reachable with all four states correct.
   judgment rather than iteratively tuned against multiple real devices —
   acceptable since JP's live check found no issue with either as-is).
 
+- [x] **41. VDP photo caps to 400px + centers at ≥500px** — JP's own
+  simpler alternative to the original (deferred, never started) "Item 1:
+  VDP two-pane layout at 500px" polish candidate. Rather than
+  restructuring into two columns, only the photo shrinks (fixed 400px
+  cap, down from scaling to the full 800px content column) once the
+  viewport hits 500px (`_kVdpPhotoShrinkBreakpoint`, deliberately
+  independent from `kMediumBreakpoint`/`kExpandedBreakpoint` — a VDP-only
+  concern) — its `AspectRatio(4/3)` height shrinks correspondingly
+  (~600px down to ~300px), clearing the price above the fold on typical
+  viewport heights without touching the spec table/features/description
+  below. JP then flagged the shrunk photo read as off-center against the
+  still-full-width details below it; both the photo and the title/price/
+  mileage block above the spec table (`_VdpDetails`'s new
+  `centerTopInfo` param) now center within the content column at this
+  width, everything else unchanged. `lib/screens/vdp_screen.dart`,
+  `test/screens/vdp_screen_test.dart` (TDD throughout). Full suite (297
+  tests at the time) + `flutter analyze` clean. `docs/SPEC.md` updated.
+  JP live-verified the sizing/centering against the running
+  `flutter run -d web-server` build. Confidence: 93/100 (the exact 400px
+  cap was a starting estimate JP confirmed live, not derived from a
+  measured target).
+
+- [x] **42. SRP compact filter-bar: organic reflow + shortened labels**
+  — JP's real-device (Pixel 2) finding: the compact-width filter panel's
+  hardcoded one-per-row `Column` (explicitly confirmed intentional during
+  Tasks 33-35's own review, per that design spec) was wasting vertical
+  space real phone widths didn't need to spend — content-width dropdowns
+  often fit 2+ per row. Replaced with the exact same `Wrap` mechanism
+  already used at medium/expanded (no new layout code, no hardcoded row
+  count) — the "Hide filters" toggle is now a 5th `Wrap` child too, able
+  to share the last row instead of always sitting on its own line below.
+  Separately, make/body's *unselected* label shortens to "Makes"/"Body
+  styles" at compact width only ("All" is inferable) — narrower, so make
+  and body can also share a row; verified empirically this doesn't
+  single-handedly get all 4 onto one row (min/max price's ~169px-each
+  cap is the real bottleneck, not body's label length) but does add a row
+  of savings. `lib/screens/srp_screen.dart`,
+  `test/screens/srp_screen_test.dart` (TDD throughout, several rounds of
+  measuring real rendered widths rather than assuming — an earlier
+  synthetic estimate for "All makes" width was corrected against actual
+  measured `Size`). Full suite (303 tests at the time) + `flutter
+  analyze` clean. `docs/SPEC.md` updated. JP live-verified on a real
+  Pixel 2. Confidence: 92/100 (this session's `flutter_test` widths are
+  known to diverge somewhat from real-device font-metric rendering — see
+  Task 38's LEARNING.md entry on the same limitation — so exact per-width
+  row assignments were verified live, not just synthetically).
+

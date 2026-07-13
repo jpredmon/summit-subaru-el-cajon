@@ -309,7 +309,16 @@ class Vehicle {
   `paginate.ts`, ported unchanged).
 - **Filtering:** make, normalized body style, and price range via **two
   selects** (min/max — see Data model above for the threshold list and
-  pruning rule). Applied client-side, no additional API calls.
+  pruning rule). Applied client-side, no additional API calls. **Compact
+  width (< 600px), panel open:** the 4 dropdowns + the "Hide filters"
+  toggle are all children of one `Wrap` (same organic reflow as
+  medium/expanded, not a hardcoded row count) — real phone widths often
+  fit 2+ per row instead of a forced one-per-row stack, and "Hide
+  filters" can share the last row instead of always sitting on its own.
+  Make and body style's *unselected* label ("All makes"/"All body
+  styles") shortens to "Makes"/"Body styles" at this width only ("All" is
+  inferable) — narrower, so make and body can also share a row; a real
+  selected value still shows its full name (e.g. "Honda"), unaffected.
 - **URL sync (web target):** filter and page state live in the route's
   query parameters so state is shareable and survives refresh/back — same
   reasoning as the web app: this is what makes paging and filtering compose
@@ -334,7 +343,18 @@ class Vehicle {
   semantics as the full row, just visually lighter) plus a horizontal
   swipe gesture driving the identical index transitions — no
   wraparound, same clamp semantics. The "X of Y" counter stays. At/above
-  600px: the full button row is unchanged, no swipe gesture.
+  600px: the full button row is unchanged, no swipe gesture. **At/above a
+  separate 500px breakpoint** (independent of the 600px one above, JP's
+  real-usage finding): the photo is capped to a fixed 400px width instead
+  of scaling up with the page's 800px content column, so its `AspectRatio
+  (4/3)` height shrinks enough that the price clears the fold on typical
+  viewport heights — everything else in the single-column layout (spec
+  table, features, description) is untouched, not a two-pane restructure.
+  The photo, and the title/price/mileage block above the spec table, are
+  both horizontally centered within the content column at this width
+  (they'd otherwise look lopsided against the still-full-width spec table
+  below); below 500px both stay exactly as before (full width,
+  left-aligned).
 - Header: year/make/model/trim, price, mileage, stock number.
 - Spec table: engine, transmission, drivetrain, mpg city/hwy, exterior/
   interior color, certified status.

@@ -14,6 +14,19 @@ import '../widgets/skeleton.dart';
 
 const int _kFeatureBound = 10;
 
+/// Viewport width at which the photo starts shrinking (below this, it's
+/// full content width as before). Deliberately independent from
+/// `kMediumBreakpoint`/`kExpandedBreakpoint` (`lib/theme/breakpoints.dart`)
+/// -- this is a VDP-only concern, not part of the shared window-size-class
+/// system those drive.
+const double _kVdpPhotoShrinkBreakpoint = 500;
+
+/// The photo's capped width at/above [_kVdpPhotoShrinkBreakpoint] -- chosen
+/// so its `AspectRatio(4/3)` height shrinks enough (~600px down to ~300px)
+/// that the price is visible without scrolling on typical viewport heights,
+/// without touching anything else in the single-column layout below it.
+const double _kVdpShrunkPhotoWidth = 400;
+
 /// Vehicle Detail Page — reads the [vehicleId] vehicle from the same
 /// [inventoryProvider] cache the SRP populated (a local find-by-id, never a
 /// second fetch). Four distinct states: loading, error (same message as
@@ -135,10 +148,18 @@ class _VdpBodyState extends State<_VdpBody> {
       onPressed: widget.onBackToResults,
       child: const Text('Back to search results'),
     );
+    // Only the photo (and the title/price/mileage block above the spec
+    // table) shrink/center at wider viewports -- everything else in this
+    // single-column layout (spec table, features, description) is
+    // untouched, deliberately not the earlier-considered two-pane
+    // restructure. Narrower than _kVdpPhotoShrinkBreakpoint: both stay
+    // exactly as before (full content width, left-aligned).
+    final shrinkPhoto = MediaQuery.sizeOf(context).width >= _kVdpPhotoShrinkBreakpoint;
     final details = _VdpDetails(
       vehicle: vehicle,
       featuresExpanded: _featuresExpanded,
       onToggleFeatures: () => setState(() => _featuresExpanded = !_featuresExpanded),
+      centerTopInfo: shrinkPhoto,
     );
 
     // Always single-pane, at every viewport width: photo/carousel full-width
@@ -146,7 +167,16 @@ class _VdpBodyState extends State<_VdpBody> {
     // widths (Tasks 17-19) was tried and reverted -- reviewed on a real
     // wide browser window and judged worse than a wide single column, and
     // the reference web app never had a two-pane VDP either.
+    final photoCarousel = PhotoCarousel(key: ValueKey(vehicle.id), photos: vehicle.photos);
+    // Center, not left-align, once the photo is narrower than the content
+    // column -- left-aligned would otherwise look lopsided against the
+    // still-full-width spec table/features/description below it.
+    final photo = shrinkPhoto
+        ? Center(child: SizedBox(width: _kVdpShrunkPhotoWidth, child: photoCarousel))
+        : photoCarousel;
+
     final content = ConstrainedBox(
+      key: const Key('vdp-content'),
       constraints: const BoxConstraints(maxWidth: 800),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -154,7 +184,7 @@ class _VdpBodyState extends State<_VdpBody> {
         children: [
           backButton,
           const SizedBox(height: 8),
-          PhotoCarousel(key: ValueKey(vehicle.id), photos: vehicle.photos),
+          photo,
           const SizedBox(height: 16),
           details,
         ],
@@ -169,18 +199,29 @@ class _VdpBodyState extends State<_VdpBody> {
 }
 
 class _VdpDetails extends StatelessWidget {
-  const _VdpDetails({required this.vehicle, required this.featuresExpanded, required this.onToggleFeatures});
+  const _VdpDetails({
+    required this.vehicle,
+    required this.featuresExpanded,
+    required this.onToggleFeatures,
+    required this.centerTopInfo,
+  });
 
   final Vehicle vehicle;
   final bool featuresExpanded;
   final VoidCallback onToggleFeatures;
 
+  // Centers the title/price/mileage block (below) once the photo above it
+  // has shrunk narrower than the content column -- left-aligned there would
+  // read as offset from the now-centered photo. Left everything else in
+  // this Column (spec table onward) untouched either way.
+  final bool centerTopInfo;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    final topInfo = Column(
+      crossAxisAlignment: centerTopInfo ? CrossAxisAlignment.center : CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
@@ -210,6 +251,14 @@ class _VdpDetails extends StatelessWidget {
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
+      ],
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        centerTopInfo ? Center(child: topInfo) : topInfo,
         const Divider(height: 32),
         _SpecTable(vehicle: vehicle),
         if (vehicle.features.isNotEmpty) ...[

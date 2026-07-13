@@ -368,6 +368,104 @@ void main() {
     });
   });
 
+  group('photo shrinks at wider viewports (single column otherwise unchanged)', () {
+    Future<void> pumpAt(WidgetTester tester, double width) async {
+      tester.view.physicalSize = Size(width, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final inventory = Inventory(vehicles: [vehicle(id: 1)], dealerName: 'Test Dealer');
+      await tester.pumpWidget(
+        _wrap(
+          ProviderScope(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              inventoryProvider.overrideWith((ref) => Future.value(inventory)),
+            ],
+            child: const VdpScreen(vehicleId: 1),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('below 500px: photo spans the full available content width, as before', (tester) async {
+      await pumpAt(tester, 450);
+
+      final photoWidth = tester.getSize(find.byType(PhotoCarousel)).width;
+      // 450px viewport minus the page's 16px-each-side padding (SPEC).
+      expect(photoWidth, closeTo(450 - 32, 1));
+    });
+
+    testWidgets('at and above 500px: photo is capped to a smaller fixed width', (tester) async {
+      await pumpAt(tester, 500);
+
+      final photoWidth = tester.getSize(find.byType(PhotoCarousel)).width;
+      expect(photoWidth, closeTo(400, 1));
+    });
+
+    testWidgets('at the largest widths: photo stays capped, does not grow back to full width', (tester) async {
+      await pumpAt(tester, 1400);
+
+      final photoWidth = tester.getSize(find.byType(PhotoCarousel)).width;
+      expect(photoWidth, closeTo(400, 1));
+    });
+
+    testWidgets(
+      'the details column keeps its own full (up to 800px) content width, unaffected by the photo cap',
+      (tester) async {
+        await pumpAt(tester, 1400);
+
+        final contentWidth = tester.getSize(find.byKey(const Key('vdp-content'))).width;
+        final photoWidth = tester.getSize(find.byType(PhotoCarousel)).width;
+        expect(contentWidth, closeTo(800, 1));
+        expect(photoWidth, lessThan(contentWidth));
+      },
+    );
+
+    testWidgets('at and above 500px: the photo is horizontally centered within the content column', (
+      tester,
+    ) async {
+      await pumpAt(tester, 1400);
+
+      final contentRect = tester.getRect(find.byKey(const Key('vdp-content')));
+      final photoRect = tester.getRect(find.byType(PhotoCarousel));
+      final leftGap = photoRect.left - contentRect.left;
+      final rightGap = contentRect.right - photoRect.right;
+      expect(leftGap, closeTo(rightGap, 1));
+    });
+
+    testWidgets(
+      'at and above 500px: the title/price/mileage block is horizontally centered within the content column',
+      (tester) async {
+        await pumpAt(tester, 1400);
+
+        final contentRect = tester.getRect(find.byKey(const Key('vdp-content')));
+        final titleRect = tester.getRect(find.text('2020 Honda Accord EX-L'));
+        final titleCenter = titleRect.left + titleRect.width / 2;
+        expect(titleCenter, closeTo(contentRect.left + contentRect.width / 2, 1));
+      },
+    );
+
+    testWidgets('at and above 500px: the spec table stays left-aligned, not centered', (tester) async {
+      await pumpAt(tester, 1400);
+
+      final contentRect = tester.getRect(find.byKey(const Key('vdp-content')));
+      final specTableRect = tester.getRect(find.byType(Wrap).first);
+      expect(specTableRect.left, closeTo(contentRect.left, 1));
+    });
+
+    testWidgets('below 500px: the title stays left-aligned, unaffected by the wider-width centering', (
+      tester,
+    ) async {
+      await pumpAt(tester, 450);
+
+      final contentRect = tester.getRect(find.byKey(const Key('vdp-content')));
+      final titleRect = tester.getRect(find.text('2020 Honda Accord EX-L'));
+      expect(titleRect.left, closeTo(contentRect.left, 1));
+    });
+  });
+
   group('description', () {
     testWidgets('shown when non-empty', (tester) async {
       final inventory = Inventory(
