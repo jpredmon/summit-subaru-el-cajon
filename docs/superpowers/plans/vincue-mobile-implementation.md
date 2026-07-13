@@ -1773,7 +1773,7 @@ paging/URL-sync work, VDP reachable with all four states correct.
      `docs/LEARNING.md` note on `integration_test` as a new concept) once
      JP approves starting this task.
 
-- [ ] **40. VDP carousel swipe gesture, buttons hidden at compact width**
+- [x] **40. VDP carousel swipe gesture, buttons hidden at compact width**
   — Item 3 of 4 from the approved above-and-beyond polish plan
   (`C:\Users\Student\.claude\plans\1-in-vdp-in-the-frolicking-volcano.md`),
   next after Item 2 (Task 37, done) per that plan's own effort/risk
@@ -1835,4 +1835,17 @@ paging/URL-sync work, VDP reachable with all four states correct.
   just devtools per this plan's own past finding that the two can show
   different visible content at the "same" width), confirming no fights
   with page vertical scroll.
+
+  **Status: DONE.** 27 new/updated tests in `photo_carousel_test.dart`
+  (TDD: written failing first, confirmed failing for the expected reason
+  before implementation) + full suite (288 tests) + `flutter analyze`
+  clean. `docs/SPEC.md`'s Photo carousel bullet and `docs/LEARNING.md`
+  updated. **JP live-verified all four acceptance points** against the
+  running `flutter run -d web-server` build: swipe left/right navigates,
+  ghost chevrons visible on the photo edges (not the old full row), the
+  "X of Y" counter still shows, and swipe doesn't fight the page's
+  vertical scroll. Confidence: 94/100 (docked slightly for the swipe
+  velocity threshold and ghost-chevron opacity/size being chosen by
+  judgment rather than iteratively tuned against multiple real devices —
+  acceptable since JP's live check found no issue with either as-is).
 
