@@ -52,7 +52,7 @@ class VincueMobileApp extends ConsumerWidget {
       title: 'VINCUE Inventory',
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
-      // Above-and-beyond decision (docs/superpowers/specs, dark-mode-
+      // Deliberate branding decision (docs/superpowers/specs, dark-mode-
       // disabled note): forced light-only for now -- the header logo's
       // palette doesn't read well against the dark theme yet, and no time
       // budgeted to also tune dark-mode contrast for it. Deliberately NOT

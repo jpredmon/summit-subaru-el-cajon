@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 /// Shared error state for a failed inventory fetch -- SRP and VDP both
-/// show the same message and recovery action. Above-and-beyond fix (G1,
-/// docs/superpowers/plans/above-and-beyond-candidates.md): previously a
+/// show the same message and recovery action. Fixes a real gap (G1,
+/// docs/superpowers/plans/possible-to-dos.md): previously a
 /// static message with no recovery besides a full page reload.
 class InventoryErrorView extends StatelessWidget {
   const InventoryErrorView({super.key, required this.onRetry});

@@ -1032,7 +1032,7 @@ Both of these were flagged by the required per-task review, verified against
   shared default for both the SRP grid's small thumbnails and the VDP
   carousel's larger display, there's no way for either call site to say
   "size me differently" — a real gap (logged as backlog item G4,
-  `above-and-beyond-candidates.md`) that only became visible by asking
+  `possible-to-dos.md`) that only became visible by asking
   "who else calls this function, at what size?" during review, not from
   the diff itself.
 - **Real disk/network I/O resists unit testing, and that's OK.** The
@@ -1195,3 +1195,56 @@ Both of these were flagged by the required per-task review, verified against
   shortened "Makes" label was what was actually on screen. Fixed by
   checking for both possible labels rather than assuming one viewport
   width.
+
+## 2026-07-13 — Task 39 follow-up: real-device `pumpAndSettle()` hang, and G4
+
+- **`pumpAndSettle()` right after mounting a screen that starts in a
+  loading state can hang for real, not just theoretically.** A second
+  integration test (`srp_error_retry_test.dart`) hit `SkeletonPulse`'s
+  documented gotcha (`lib/widgets/skeleton.dart`'s own comment: its pulse
+  animation repeats forever without a reduced-motion setting, so
+  `pumpAndSettle()` never observes "no more frames scheduled") for real —
+  it hung for the full default 10-minute `pumpAndSettle()` timeout on the
+  physical Pixel 2 before being killed. `srp_large_inventory_test.dart`
+  had the identical risk in its own initial `pumpAndSettle()` call but
+  happened not to trigger it (its provider resolves via `Future.value`
+  immediately; the error test's `Future.error` apparently took enough
+  extra real-device scheduling for the pulse to actually start
+  repeating) — "passed twice" isn't proof a risky pattern is safe, just
+  that it didn't get unlucky yet. Fixed both with a shared
+  `pumpUntilFound()` helper (`integration_test/support/pump_until.dart`):
+  bounded, condition-based `tester.pump(step)` in a loop instead of
+  `pumpAndSettle()`, for any moment a loading state might be on screen.
+- **A second, unrelated cause of the exact same symptom: a locked
+  device screen.** After fixing the animation issue, the same test hung
+  again, at the same point, for a different reason — Android stops
+  delivering VSYNC/frame callbacks to a backgrounded/locked app, so
+  *any* `tester.pump()` call (not just `pumpAndSettle()`) stalls
+  indefinitely waiting for a frame that never comes. Both causes produce
+  identical symptoms (test output frozen after "Installing..."), so
+  don't assume a fix failed just because the same hang recurs — check
+  for a genuinely different root cause before concluding otherwise.
+  `adb shell svc power stayon usb` keeps the device awake while
+  connected, avoiding this going forward.
+- **G4 (photo disk-cache sizing): `CachedNetworkImageProvider`'s own
+  `maxWidth`/`maxHeight` resize the file cached *on disk*, not just the
+  in-memory decode** — confirmed by reading the package source
+  (`cached_network_image-3.4.1/.../cached_network_image_provider.dart`),
+  not assumed. This ruled out an initially-considered simpler
+  alternative, wrapping the existing provider in Flutter's built-in
+  `ResizeImage`: that only constrains the in-memory decode size, leaving
+  the full-resolution original still cached to disk — solving the wrong
+  half of the problem this task was actually about (disk cost, per the
+  backlog entry's own wording), not just memory cost.
+- **Widening a shared function-type `typedef` (`VehiclePhotoProviderBuilder`)
+  is a compile-time-enforced, all-or-nothing change** — every existing
+  test double matching its old shape (`ImageProvider Function(String
+  url)`) became a compile error the moment the typedef gained a new
+  named parameter, even ones that would never need to use it. Dart's
+  function-type subtyping doesn't allow a narrower-signature function
+  where a wider one is expected, unlike optional *positional*
+  parameters. This is naturally what TDD surfaces as "confirm it fails
+  for the expected reason" — here, that was a wave of compile errors
+  across two test files, not a single failing assertion, and fixing
+  every one was mechanical (add `{int? maxWidth}`, ignore it in the
+  body) rather than a sign the design was wrong.

@@ -337,7 +337,7 @@ class Vehicle {
   failed photo shows the placeholder; navigating to a different index
   retries independently). Single placeholder (same one used on SRP cards)
   when `photos` is empty. **Below the compact breakpoint (< 600px, Task
-  40, above-and-beyond polish):** the full Previous/Next `IconButton` row
+  40, extra polish):** the full Previous/Next `IconButton` row
   is replaced by small semi-transparent "ghost" chevrons overlaid on the
   photo's own edges (same tap targets/disabled-at-boundary/tooltip
   semantics as the full row, just visually lighter) plus a horizontal
@@ -390,7 +390,7 @@ don't apply in Flutter and shouldn't be replicated:
   because a JS module import can't run early enough — Flutter has no such
   penalty; resolve `ThemeMode` from the persisted value before the first
   frame (no duplicate-logic workaround needed).
-  **Deviation (above-and-beyond, not an oversight):** as of the header-logo
+  **Deviation (deliberate, not an oversight):** as of the header-logo
   work, this build forces `ThemeMode.light` and no longer exposes the
   toggle in the UI — the header logo's palette doesn't read well against
   the dark theme, and no time was budgeted to also tune dark-mode contrast
@@ -453,7 +453,7 @@ don't apply in Flutter and shouldn't be replicated:
   back to a generic "Vehicle Inventory" string if it's ever empty — VINCUE
   is the platform vendor, not the dealership, so it must never be
   hardcoded as the visible name.
-- **Header logo (above-and-beyond deviation):** the header AppBar shows a
+- **Header logo (deliberate deviation):** the header AppBar shows a
   fixed Summit Subaru El Cajon logo image instead of the live `dealerName`
   text described above — a deliberate, documented divergence (see
   `docs/superpowers/specs/2026-07-12-header-logo-design.md`), not an

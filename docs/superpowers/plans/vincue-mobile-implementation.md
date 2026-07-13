@@ -245,7 +245,7 @@ Status legend: `[ ]` not started, `[~]` in progress, `[x]` done.
 verification pass — separate, confirm-before-install / near-project-end
 step.
 
-## Above-and-beyond additions (beyond parity scope — not Tasks 1–19)
+## Extras (beyond parity scope — not Tasks 1–19)
 
 - [x] **20. Malformed description entity-tag repair** — real Summit
   Subaru El Cajon listings (confirmed on stock `RH801775` and `PLE17159`)
@@ -257,7 +257,7 @@ step.
   treats this malformed sequence as literal text, not a tag — so it
   survives on-screen as visible `<b>`/`</b>` characters. This is not a bug
   (the reference React app's identical `DOMParser`/`textContent` approach
-  would show the same artifact); it's a deliberate above-and-beyond
+  would show the same artifact); it's a deliberate
   deviation from strict parity, per the approved design
   (`docs/superpowers/specs/2026-07-11-description-entity-repair-design.md`).
   New private helper `_repairMangledEntityTags(String text)` —
@@ -291,7 +291,7 @@ step.
 - [x] **21. Deploy the Flutter app itself to Vercel** — not required
   scope (`docs/context/original-request.md`'s submission mechanism is
   repo access + a mobile-lead review call, not a public deployment); JP
-  explicitly asked for it as a deliberate above-and-beyond addition (a
+  explicitly asked for it as a deliberate extra addition (a
   real shareable link, and the only way to view the app on Apple hardware
   since there's no native-iOS build possible on this Windows machine —
   real Android testing goes through a native `.apk` over USB/ADB instead,
@@ -333,7 +333,7 @@ step.
   origin too, proving it's upstream data quality, not environment-
   specific.
 
-- [x] **22. Summit Subaru El Cajon header logo** — above-and-beyond
+- [x] **22. Summit Subaru El Cajon header logo** — extra
   branding, not core parity: replaces the plain `Text(dealerName)` AppBar
   title (added last session, commit `f01e873`) with JP's custom-designed
   logo (`assets/images/summit_subaru_logo.png`, 1460×824, transparent
@@ -387,7 +387,7 @@ step.
      rendering if the logo looks cramped or the AppBar looks
      disproportionately tall.)
   3. **`docs/SPEC.md`** — short bullet in the "Dealer name" section
-     documenting this as an intentional above-and-beyond deviation:
+     documenting this as an intentional deviation:
      the header shows a fixed branded logo rather than live dealer-name
      text, with the live value still driving the image's accessibility
      label.
@@ -414,7 +414,7 @@ step.
   uncertainty (`toolbarHeight`, logo legibility/contrast in both themes)
   is visual and needs JP's own look at the running app.
 
-- [x] **23. Favicon** — above-and-beyond, config-only, no testable logic
+- [x] **23. Favicon** — extra, config-only, no testable logic
   (same TDD exception as Task 1's scaffolding). JP generated a favicon
   package (favicon.io) from the finished logo. Replaced Flutter's default
   template icons in place — same filenames, so no `index.html`/
@@ -427,7 +427,7 @@ step.
   defaults — the generated package didn't include maskable-safe variants.
 
 - [x] **24. Disable dark mode (force light, keep infrastructure intact)** —
-  above-and-beyond decision, not a bugfix: the header logo's palette
+  branding decision, not a bugfix: the header logo's palette
   (navy/gold/red/green) doesn't read well against the dark theme, and no
   time budgeted to also tune dark-mode contrast for it. Per JP's explicit
   call: `lib/main.dart`'s `VincueMobileApp` now hardcodes
@@ -456,7 +456,7 @@ step.
   suite (242 tests) + `flutter analyze` clean.
 
 - [x] **25. Header/title font matched to the logo (Anton)** —
-  above-and-beyond polish, not core parity: JP asked for a font that
+  extra polish, not core parity: JP asked for a font that
   resembles the "SUMMIT SUBARU" lettering in the logo, matched to
   **Anton** (Google Fonts / SIL OFL, free to bundle, no licensing
   concern) after visually inspecting the logo's bold condensed
@@ -492,7 +492,7 @@ step.
   still applies tabular figures, preserves the base fontSize). Full suite
   (248 tests) + `flutter analyze` clean.
 
-- [x] **26. "Vehicle Image Not Available" placeholder** — above-and-beyond
+- [x] **26. "Vehicle Image Not Available" placeholder** — extra
   polish, not core parity: replaces `_PlaceholderPhoto`'s generic car icon
   (`lib/widgets/vehicle_photo.dart`) with the branded logo + "Vehicle Image
   Not Available" (Anton font) on a white background, per JP's own design.
@@ -539,9 +539,9 @@ manually, confirm SRP loads real data through the Vercel proxy, filters/
 paging/URL-sync work, VDP reachable with all four states correct.
 `flutter test` run in full after every task.
 
-- [x] **27. Retry action on fetch failure (G1)** — above-and-beyond
+- [x] **27. Retry action on fetch failure (G1)** — extra
   polish, not core parity: promoted from the G1 backlog entry in
-  `docs/superpowers/plans/above-and-beyond-candidates.md`. Both
+  `docs/superpowers/plans/possible-to-dos.md`. Both
   `lib/screens/srp_screen.dart` and `lib/screens/vdp_screen.dart` showed
   a static `Text('Failed to load inventory. Please try again later.')`
   on fetch failure with no recovery besides a full page reload. New
@@ -566,7 +566,7 @@ paging/URL-sync work, VDP reachable with all four states correct.
   separate not-found state, which would also clear the error text). Full
   suite (254 tests) + `flutter analyze` clean.
 
-- [x] **28. SRP grid bottom-gap bug fix** — real bug, not above-and-beyond
+- [x] **28. SRP grid bottom-gap bug fix** — real bug, not extra
   polish: JP reported (with a screenshot) that narrowing the browser
   width left a growing empty gap underneath the price on every SRP card.
   Root cause: `_srpGridDelegate` (`lib/screens/srp_screen.dart`) used a
@@ -650,7 +650,7 @@ paging/URL-sync work, VDP reachable with all four states correct.
   (255 tests) + `flutter analyze` clean after all fixes.
 
 - [x] **29. Pagination controls overflow (G3)** — real bug, not
-  above-and-beyond polish: `above-and-beyond-candidates.md`'s G3 entry,
+  extra polish: `possible-to-dos.md`'s G3 entry,
   reproduced again live while JP tested Task 28's grid fix at narrow
   widths. Root-caused via `systematic-debugging` before any fix attempt
   (not guessed): `_PaginationControls`' `Row` (Previous / "Page N of M" /
@@ -684,7 +684,7 @@ paging/URL-sync work, VDP reachable with all four states correct.
   code) in `_FilterBar`, triggering below ~300px of available width —
   confirmed independent of this bug (reproduces on the old pagination
   code too), deliberately left out of scope for this task, now recorded
-  in `above-and-beyond-candidates.md`'s G3 entry instead of silently
+  in `possible-to-dos.md`'s G3 entry instead of silently
   dropped.
   **Confidence: 90/100.** What was uncertain and how it was closed: my
   first regression test used a 200px viewport (matching the original
@@ -756,7 +756,7 @@ paging/URL-sync work, VDP reachable with all four states correct.
   mathematically derived one — a future dealer feed with an unusually
   long make name would rely on the ellipsis truncation (verified to
   activate, not verified to look good at every possible length).
-  `above-and-beyond-candidates.md`'s G3 entry updated to mark this
+  `possible-to-dos.md`'s G3 entry updated to mark this
   fixed too.
 
 - [x] **32. Revert VDP two-pane layout (Tasks 17-19) to always single-pane** —
@@ -1467,18 +1467,18 @@ paging/URL-sync work, VDP reachable with all four states correct.
   `NetworkImage` as the default (fixed in this diff), and a missing
   `maxWidth`/`maxHeight` size cap that caches full-resolution photos even
   for small SRP thumbnails (deliberately deferred — JP's call — logged as
-  new backlog item **G4** in `above-and-beyond-candidates.md`, since
+  new backlog item **G4** in `possible-to-dos.md`, since
   SRP/VDP currently share one provider function with no per-context size
   hint).
 
   Real gap, not Flutter-flex polish: promoted from the G2 backlog entry in
-  `above-and-beyond-candidates.md` per the project's scope-discipline rule
+  `possible-to-dos.md` per the project's scope-discipline rule
   (SPEC.md entry → numbered task → full loop), SPEC.md updated first (see
   the new "Photo disk cache (G2)" bullet under Architecture decisions).
 
 - [x] **37. Persistent button styling at compact widths (G5)** —
   **Status: DONE**, confidence 90/100. Promoted from the G5 backlog entry
-  in `above-and-beyond-candidates.md` (JP's real-Android-device finding:
+  in `possible-to-dos.md` (JP's real-Android-device finding:
   plain-text `TextButton`s only flash color on the press ripple, easy to
   miss at phone widths). `persistentLinkButtonStyle(BuildContext)`
   (`lib/theme/app_theme.dart`) returns `null` above the compact breakpoint
@@ -1494,7 +1494,7 @@ paging/URL-sync work, VDP reachable with all four states correct.
   in `test/theme/app_theme_test.dart`; full suite (275 tests) +
   `flutter analyze` clean.
 
-  From the approved above-and-beyond polish plan
+  From the approved polish plan
   (`C:\Users\Student\.claude\plans\1-in-vdp-in-the-frolicking-volcano.md`),
   Item 2 — lowest effort/risk of the 4 candidate items in that plan.
   `Image.network`/`NetworkImage` only benefits from Flutter's in-memory
@@ -1813,7 +1813,7 @@ paging/URL-sync work, VDP reachable with all four states correct.
   this class is now guaranteed to be caught).
 
 - [x] **40. VDP carousel swipe gesture, buttons hidden at compact width**
-  — Item 3 of 4 from the approved above-and-beyond polish plan
+  — Item 3 of 4 from the approved polish plan
   (`C:\Users\Student\.claude\plans\1-in-vdp-in-the-frolicking-volcano.md`),
   next after Item 2 (Task 37, done) per that plan's own effort/risk
   ranking. Not started: confirmed via grep, no `GestureDetector`/swipe

@@ -1,24 +1,17 @@
-# Above-and-beyond candidates (Flutter-flex features)
+# To-dos
 
-**Status: NOT approved scope — this is JP's "maybe-do-it-later" list
-(2026-07-12).** C1-C6 below are optional "prove myself" features to
-consider *after* the core build (Tasks 14b–16) is done and if time allows,
-not active work. Each one is chosen because it's notably easier in Flutter
-than in the React web version — a concrete "React can't do this cleanly,
-Flutter does it in a few lines" story for the hiring submission (C6 is the
-exception — deferred effort/cost, not a React-parity story).
+**Status: NOT approved scope — optional, pick up if/when there's time.**
+Everything below is one list: C1-C7 are optional extra features, G1-G5 are
+real-world robustness gaps found during a review pass (most already done).
+None of it is active work unless promoted below.
 
 Per this project's scope discipline: none of these may be silently folded into
 the active task loop. To pick one up, first add a matching entry to
 `docs/SPEC.md` (this is scope *expansion* beyond the current spec), then promote
-the candidate below into a numbered task in
+the item below into a numbered task in
 `vincue-mobile-implementation.md`, then run it through the full loop (TDD →
 confidence score → dual review → LEARNING note → commit). Each also introduces a
 new-to-JP Flutter concept — good `docs/LEARNING.md` material.
-
-Recommended pairing if time is short: **C1 (Hero) + C2 (pull-to-refresh)** —
-an afternoon of work, the two most viscerally "native mobile" touches, each a
-clean React-can't-do-this story.
 
 ---
 
@@ -86,7 +79,6 @@ branch a distinct `Key` so the switcher detects the change. Must respect
 
 **Why Flutter > React:** pixel-diff testing is built in
 (`matchesGoldenFile`) — no Storybook + Chromatic / jest-image-snapshot stack.
-Demonstrates testing maturity, which a mobile lead notices.
 
 **Sketch:** golden tests for `VehicleCard` (with photo / placeholder / call-for-
 price) and the skeleton loading state, in light and dark. **Caveat:** goldens
@@ -126,7 +118,7 @@ resolver directly, no device needed — mirrors Task 15's define-resolver patter
 **The ask:** header disappears scrolling down, reappears scrolling up (the
 "Quick Return" pattern; Android's native equivalent is `AppBarLayout`'s
 `app:layout_scrollFlags="scroll|enterAlways|snap"`). Last of the 4 items in
-the approved above-and-beyond polish plan
+the approved polish plan
 (`C:\Users\Student\.claude\plans\1-in-vdp-in-the-frolicking-volcano.md`,
 Item 4) — the other 3 are done (Items 2/3 → Tasks 37/40; Item 1 superseded
 by Task 41's simpler photo-shrink alternative). **JP explicitly does not
@@ -142,6 +134,41 @@ alternative instead: wrap `AppShell.build`'s routed `child` in a
 `NotificationListener<UserScrollNotification>` (bubbles up regardless of
 how deep the actual scrollable is, no restructuring of `SrpScreen`/
 `VdpScreen` needed) and hide/reveal the header on scroll direction.
+
+---
+
+## C7. Additional real-device `integration_test` coverage — deferred (JP's call, 2026-07-12)
+
+Task 39 added the `integration_test` capability plus two real-device flows
+(`integration_test/srp_large_inventory_test.dart` — scroll + filter +
+clear; `integration_test/srp_error_retry_test.dart` — fetch failure ->
+Retry -> loaded). JP asked for one more quick flow (the retry one) and to
+park the rest here rather than keep expanding Task 39 indefinitely. Each
+additional flow costs a real Gradle build + on-device install to run, so
+these are deliberately scoped as separate, pick-up-when-useful additions,
+not a backlog that has to be cleared before shipping. Candidates, roughly
+by how much of the app's surface each would newly exercise:
+
+- **VDP navigation + photo carousel** — tap a card from the SRP into the
+  VDP, exercise the carousel (swipe at compact width, ghost chevrons,
+  Previous/Next at wider width, per-index broken-photo retry), "Back to
+  search results". Currently zero real-device coverage of the VDP at all.
+- **Pagination** — Next/Previous across pages with a >12-vehicle
+  inventory, boundary-disabled state.
+- **Empty-results state** at real device scale (a filter combination with
+  zero matches, tapping the empty-results panel's Clear filters control).
+- **Body style / max price filters** — only make + min price have been
+  exercised so far (the error/retry flow's Task 38 report ingredients).
+- **URL sync / deep linking** (web target only) — filter/page state
+  round-tripping through query parameters, a restored-but-now-invalid
+  filter value not crashing.
+- **Theme toggle** persisting across navigation (already has `flutter_test`
+  coverage in `test/widget_test.dart`; a real-device pass would confirm
+  the same holds with real platform theme-detection behavior).
+- **Disk-level image cache (Task 36/G2)** — confirming a photo survives a
+  real app relaunch without re-fetching, which `flutter_test`'s simulated
+  environment can't meaningfully exercise (no real disk, no real process
+  restart).
 
 ---
 
@@ -242,29 +269,40 @@ regression caught by an independent code review, not shipped) — without
 `Center`, the controls would render flush-left instead of centered on
 any viewport wide enough for them to fit on one line.
 
-### G4. Photo disk cache has no per-context size limit
+### G4. Photo disk cache has no per-context size limit — DONE (2026-07-13)
 
 Found during Task 36's (G2) dual review, 2026-07-12 — **deliberately
-deferred** (JP's call). `defaultVehiclePhotoProvider`
-(`lib/widgets/vehicle_photo.dart`) calls `CachedNetworkImageProvider(url)`
+deferred** (JP's call) until now. `defaultVehiclePhotoProvider`
+(`lib/widgets/vehicle_photo.dart`) called `CachedNetworkImageProvider(url)`
 with no `maxWidth`/`maxHeight`, even though the constructor supports
 resize-on-disk via both params. `VehiclePhoto` is shared verbatim between
 the SRP grid (`VehicleCard`, small masonry-grid thumbnail) and the VDP
 carousel (`PhotoCarousel`, larger display) — one `defaultVehiclePhotoProvider`
 function, no way for a call site to say "I'm a thumbnail." So every SRP
-thumbnail disk-caches and decodes the CDN's full-resolution original,
+thumbnail disk-cached and decoded the CDN's full-resolution original,
 multiplying disk/decode cost for the common browsing case with no size cap
 taken even though the API was available.
 
-Not a one-line fix: a blanket size cap would also degrade VDP carousel
-quality, since both contexts share the same provider function today. Needs
-`VehiclePhotoProviderBuilder`'s signature widened with a size hint (or two
-separate builders, one per context) before a fix is attempted.
+**Fix:** `VehiclePhotoProviderBuilder`'s signature widened to
+`ImageProvider Function(String url, {int? maxWidth})`, forwarded through
+`VehiclePhoto`'s new `maxWidth` field to `imageProvider(url, maxWidth:
+maxWidth)`. `VehicleCard` passes a thumbnail-sized cap (`_kThumbnailMaxWidth
+= 560`, double the SRP grid's 280px column cap for high-DPI screens);
+`PhotoCarousel` passes nothing (`null`), so the VDP display stays
+uncapped/full quality — the two contexts genuinely need different values,
+confirmed by widening the shared builder rather than duplicating it.
 
-**Test first:** TBD once scoped — likely a widget test asserting
-`VehicleCard`'s `VehiclePhoto` receives a smaller `maxWidth` than
-`PhotoCarousel`'s, via an injected fake provider capturing its arguments
-(same injection pattern already used throughout `vehicle_photo_test.dart`).
+**Test first:** widget tests confirm (1) `defaultVehiclePhotoProvider`
+forwards `maxWidth` to `CachedNetworkImageProvider.maxWidth` (the field that
+actually drives the on-disk resize, not just in-memory decode), (2)
+`VehiclePhoto` forwards its own `maxWidth` to an injected fake provider
+(structural proof, not just the default builder in isolation), (3)
+`VehicleCard`'s `VehiclePhoto` receives a capped value, (4) `PhotoCarousel`'s
+does not. Widening the shared `VehiclePhotoProviderBuilder` typedef meant
+updating every existing test double across `vehicle_photo_test.dart` and
+`photo_carousel_test.dart` to the new `(url, {maxWidth})` shape too — a
+compile-time-enforced, purely mechanical follow-on, not new test logic.
+Full suite (309 tests) + `flutter analyze` clean.
 
 **New concept:** none new — same `ImageProvider` construction-parameter
 pattern already introduced by Task 36.

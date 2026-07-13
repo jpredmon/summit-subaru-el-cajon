@@ -60,7 +60,7 @@ class AppShell extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        // Above-and-beyond branding (docs/superpowers/specs/2026-07-12-
+        // Deliberate branding decision (docs/superpowers/specs/2026-07-12-
         // header-logo-design.md): the header shows the fixed Summit
         // Subaru El Cajon logo, a deliberate divergence from SPEC's "live
         // dealer name in the header" text requirement. dealerName is kept

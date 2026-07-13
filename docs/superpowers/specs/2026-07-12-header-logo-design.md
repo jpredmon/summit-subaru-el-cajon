@@ -12,7 +12,7 @@ sunburst-badge style of a real local organization's logo, not a derivative
 of that specific mark) and wants it in the app's header, replacing the
 plain `Text(dealerName)` title added last session (commit `f01e873`).
 
-This is a deliberate above-and-beyond branding choice, not a bugfix.
+This is a deliberate branding choice, not a bugfix.
 
 ## Scope decision: real SPEC tension, resolved explicitly
 
@@ -37,7 +37,7 @@ palette. **Rejected for this task** — dark mode is already-shipped,
 SPEC-required, tested functionality (Task 13); dropping it would be a
 real regression, not a scope trim, and a full app-wide re-theme is a much
 larger project than a header logo. If JP wants that later, it becomes its
-own separate above-and-beyond item. This task instead just confirms the
+own separate item. This task instead just confirms the
 logo's own colors (navy/gold/red/green) read acceptably against both the
 light and dark AppBar background as-is.
 
@@ -73,7 +73,7 @@ commented-out template — this is the first real asset the project adds).
   process used for the logo's own design earlier tonight.
 
 **Docs:** short bullet added to `docs/SPEC.md`'s "Dealer name" section
-documenting this as an intentional above-and-beyond deviation (fixed
+documenting this as an intentional deviation (fixed
 branded logo instead of live dealer-name text), mirroring Task 20's
 entity-repair deviation note.
 

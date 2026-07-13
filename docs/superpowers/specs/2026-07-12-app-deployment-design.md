@@ -9,7 +9,7 @@ Not required scope — checked `docs/context/original-request.md` (the
 hiring contact's actual emails): the described submission mechanism is
 repo access plus a live review call with the mobile lead, not a required
 public deployment. JP explicitly asked for it anyway, as a deliberate
-above-and-beyond addition, for two concrete reasons decided in
+extra, for two concrete reasons decided in
 conversation: (1) a real shareable link is nicer for review than "clone
 this and run `flutter run`"; (2) it's the only way to see the app on
 Apple hardware, since there's no way to build a native iOS app on this
