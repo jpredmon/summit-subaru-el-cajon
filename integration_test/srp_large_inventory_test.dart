@@ -8,8 +8,10 @@ import 'package:vincue_mobile/models/inventory.dart';
 import 'package:vincue_mobile/providers/inventory_provider.dart';
 import 'package:vincue_mobile/providers/theme_mode_provider.dart';
 import 'package:vincue_mobile/screens/srp_screen.dart';
+import 'package:vincue_mobile/widgets/vehicle_card.dart';
 
 import '../test/support/vehicle_factory.dart';
+import 'support/pump_until.dart';
 
 /// Real-device/browser E2E coverage (Task 39) -- unlike `flutter_test`'s
 /// simulated widget-tree environment, `integration_test` runs the compiled
@@ -63,7 +65,10 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle(const Duration(seconds: 5));
+      // Not pumpAndSettle() -- the screen starts in a loading state
+      // (SkeletonPulse), whose animation repeats forever on a real device
+      // and never lets pumpAndSettle() observe "no more frames scheduled".
+      await pumpUntilFound(tester, find.byType(VehicleCard));
       expect(tester.takeException(), isNull);
 
       // Scroll the grid down partway -- matches the real report's
