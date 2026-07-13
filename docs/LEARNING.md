@@ -1158,3 +1158,40 @@ Both of these were flagged by the required per-task review, verified against
   reproduce something is evidence of a testing-environment gap (missing
   real network image timing, real browser scroll/resize), not evidence
   the bug doesn't exist.
+
+## 2026-07-12 — Task 39: `integration_test` (new concept)
+
+- **`integration_test` is a first-party Flutter package (`sdk: flutter`
+  in `pubspec.yaml`, same as `flutter_test`) that runs the *compiled app*
+  on a real device/browser**, not `flutter_test`'s simulated widget-tree
+  environment. Same `testWidgets`/`tester.tap`/`tester.pump*` API as
+  every other test in this project — the only new pieces are
+  `IntegrationTestWidgetsFlutterBinding.ensureInitialized()` at the top
+  of `main()` (instead of nothing, or `TestWidgetsFlutterBinding` for
+  golden-style setups) and living in a top-level `integration_test/`
+  directory instead of `test/`. It's still just Dart importing the app's
+  own widgets directly (`ProviderScope` overrides work exactly the same
+  way widget tests already use them) — no separate driver script needed
+  for `flutter test integration_test/some_test.dart -d <device>` to work
+  directly against a real device or browser in modern Flutter.
+- **A plain `flutter test` run does not pick up `integration_test/`** —
+  it only discovers `test/` by convention. The two suites are separate
+  and run with separate commands; adding `integration_test` didn't touch
+  the existing 303-test `flutter test` suite at all.
+- **Real devices avoid the RAM cost of a local browser.** Given this
+  project's tight-RAM dev environment (see project memory), running
+  against the already-connected physical Pixel 2
+  (`flutter test integration_test/foo_test.dart -d <device-id>`) only
+  costs a Gradle build + ADB install on this machine — the actual test
+  execution happens on the phone's own hardware, unlike `-d chrome`
+  which would run a full local Chrome process here. A **physical**
+  device satisfies the project's "no emulator" rule; it isn't an
+  exception to it.
+- **The first real run caught a bug in the test, not the app** — proof
+  the harness genuinely exercises real, at-the-time-unknown conditions
+  rather than just replaying what was already assumed true. A hardcoded
+  `find.text('All makes')` failed with `StateError: Bad state: No
+  element`, because a real device is compact-width and Task 42's
+  shortened "Makes" label was what was actually on screen. Fixed by
+  checking for both possible labels rather than assuming one viewport
+  width.

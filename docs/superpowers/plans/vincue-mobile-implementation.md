@@ -1732,7 +1732,7 @@ paging/URL-sync work, VDP reachable with all four states correct.
   fix already closes) and dropping `flutter_staggered_grid_view` entirely
   (biggest change, same result this fix already achieves more cheaply).
 
-- [ ] **39. Add `integration_test` real-browser/device E2E coverage** — gap
+- [x] **39. Add `integration_test` real-browser/device E2E coverage** — gap
   identified while debugging Task 38: this project has 273 `flutter_test`
   unit/widget tests plus a *manual* click-through step
   (`flutter run -d web-server`, documented under "End-to-end verification"
@@ -1772,6 +1772,45 @@ paging/URL-sync work, VDP reachable with all four states correct.
   4. Full per-task workflow applies (TDD, confidence score, dual review,
      `docs/LEARNING.md` note on `integration_test` as a new concept) once
      JP approves starting this task.
+
+  **Status: DONE.** Added `integration_test` (first-party `sdk: flutter`,
+  no extra dependency risk) to `pubspec.yaml` `dev_dependencies`;
+  `integration_test/srp_large_inventory_test.dart` builds a 150-vehicle,
+  interleaved-make/body synthetic inventory with real (`picsum.photos`)
+  image URLs, self-contained via the same `ProviderScope` override
+  pattern the widget tests already use (no real VINCUE API/key needed).
+  Drives real UI: opens the compact filter panel, taps make=Dodge, taps
+  minPrice=$10k (the exact Task 38 report), then clears back to the full
+  set, asserting no exception at each step — the closest automated
+  equivalent of that report.
+
+  **Target decided (Step 3): the connected physical Pixel 2 via
+  `flutter test integration_test/srp_large_inventory_test.dart -d
+  <device-id>`**, not Chrome/web-server. Real device execution offloads
+  the actual app run to the phone's own hardware — only the Gradle
+  build + ADB install happen on this machine, which stayed comfortably
+  within this project's tight-RAM constraint (checked before running:
+  ~1.8GB free). This is a different, occasional-use command from the
+  project's established `flutter run -d web-server` for the interactive
+  manual dev loop — that guidance is unchanged.
+
+  **First real run caught a bug — in the test itself, not the app:**
+  hardcoded `find.text('All makes')` for the dropdown's "clear" option,
+  not accounting for Task 42's compact-width-only "Makes" shortened
+  label — a real device is compact width, so the wide-viewport text
+  was never on screen. Fixed to check both. Second run: **passed clean
+  on the real Pixel 2** — the full flow (scroll, apply Dodge + $10k min
+  price, clear) completed with no exception.
+
+  **Honest scope note:** this run does not retroactively prove Task 38's
+  original crash is unreachable elsewhere — it's one deliberately-shaped
+  repro of the exact reported conditions, passing after Task 38's fix.
+  The regular `flutter test` suite (303 tests) is unaffected/unchanged by
+  this addition (`integration_test/` isn't picked up by a plain
+  `flutter test` run). `flutter analyze` clean. Confidence: 91/100 (this
+  is one test covering one specific flow — real coverage of the
+  *capability* this task was about, not a claim that every future bug in
+  this class is now guaranteed to be caught).
 
 - [x] **40. VDP carousel swipe gesture, buttons hidden at compact width**
   — Item 3 of 4 from the approved above-and-beyond polish plan
