@@ -137,6 +137,41 @@ alternative instead: wrap `AppShell.build`'s routed `child` in a
 how deep the actual scrollable is, no restructuring of `SrpScreen`/
 `VdpScreen` needed) and hide/reveal the header on scroll direction.
 
+**2026-07-13 addendum — refined ask, still deferred (JP's call):** narrower
+scope than the note above — medium/expanded only, compact stays exactly as
+today (fully fixed header, filter bar outside the scrollable). On SRP, JP's
+first framing was header hides on scroll / filter bar stays pinned at all
+times, header reappears once scrolled back up. Talking it through surfaced
+two open sub-questions rather than a settled design:
+
+- **Reveal trigger**, undecided between: (a) standard Material
+  floating+snap — header reappears on *any* upward scroll nudge,
+  regardless of scroll position, or (b) header only reappears once
+  scroll position returns all the way to the top.
+- **Whether the filter bar should stay pinned at all** — JP floated
+  hiding the filter bar together with the header (both disappear on
+  scroll down, both reappear together only at the top) instead of
+  keeping it independently pinned. That combined-unit version sidesteps
+  the fixed-extent problem a pinned `SliverPersistentHeader` would need
+  (today's `_FilterBar` is a `Wrap` that can reflow to 2 lines depending
+  on viewport width — no fixed height to hand a persistent header
+  delegate) — worth remembering as the easier variant if this gets
+  picked up again.
+- **SRP footer (pagination controls) non-sticky too** — same
+  medium/expanded scoping: `_PaginationControls`
+  (`lib/screens/srp_screen.dart:518`) is currently a fixed sibling below
+  `Expanded(child: MasonryGridView...)`, same reason the filter bar is
+  fixed — outside the grid's own scrollable, not pinned via any sliver
+  mechanism. JP wants the option to let it scroll away with the grid
+  content instead of staying fixed at the bottom, at medium/expanded.
+  Whether it then reappears on scroll-up (mirroring the header) or just
+  scrolls normally as part of the content is unresolved — not discussed
+  yet.
+
+JP stopped the brainstorm here rather than settle these — parking the
+summary rather than a spec. If revisited, resolve the sub-questions
+above before writing a real design doc.
+
 ---
 
 ## C7. Additional real-device `integration_test` coverage — deferred (JP's call, 2026-07-12)
