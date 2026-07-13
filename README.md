@@ -95,6 +95,16 @@ I've since updated my global Claude Code instructions (`~/.claude/CLAUDE.md`) to
 
 `docs/LEARNING.md` is a running, dated log of new Dart/Flutter concepts introduced task-by-task, plus two whole-project retrospectives written after the numbered task plan wrapped. The most load-bearing lessons out of that log:
 
+**What went right:**
+
+- **Every mistake became a durable process change, not a one-off patch.** The late git init became a standing global rule (`git init` as mandatory step zero); the self-graded-review gap became this project's strict independent-review requirement; every found bug got logged here or in `possible-to-dos.md` rather than silently patched and forgotten.
+- **Scope discipline held for the whole build.** Real gaps (no documented screen-size target, a dealer-data HTML-entity bug) were proactively flagged and folded into `docs/SPEC.md` as explicit deviations — never silently done, never silently skipped, and every declined/deferred extra (`possible-to-dos.md`'s C1-C7/G1-G5) is named with a reason instead of just dropped.
+- **Verifying against the real source over trusting docs or memory was a consistent habit, not a one-off.** Confirmed independently across unrelated contexts — Riverpod's actual retry internals, the Flutter SDK's own web-specific keyboard-intent handling, a real 1200px-viewport measurement — rather than assuming any of them from documentation.
+- **Infra work and logic work were kept cleanly separate.** The Dart-side API-target config was built and tested independent of the actual proxy deployment, so neither blocked the other's own correctness loop.
+- **A design that didn't pan out live was reverted outright, then properly re-solved later** — not patched into a permanent compromise. A two-pane detail-page layout was tried, reverted after a live wide-screen look, and the actual underlying problem was solved a different way afterward.
+
+**What went wrong:**
+
 - **Real data/device/browser contact should be front-loaded, not left until integration work.** Three separate bugs — a header feature that was invisible in the UI despite passing every fixture-backed test, a grid-layout crash three synthetic test attempts couldn't reproduce, and a mismatched test assertion — each surfaced only on first real contact, well after the surrounding logic had already been built on unverified assumptions.
 - **A safeguard specified in the process isn't the same as one actually exercised.** Per-task review was self-graded for a stretch of early tasks instead of run through an independent pass, caught only by a retroactive review sweep. Now enforced strictly for every task.
 - **Correctness bugs and visual/UX judgment calls need different gates.** TDD and code review catch wrong output, crashes, and overflow reliably — they don't catch "this looks worse than expected once you actually see it live," which is what drove more than one shipped decision to get reversed shortly after. Polish-tier work benefits from a live look before treating it as done, not just the same test-and-review pipeline used for logic.
