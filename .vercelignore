@@ -1,0 +1,19 @@
+# Only public/ (the built Flutter web output) and api/ (the serverless
+# proxy) need to reach Vercel. Everything else here is local Flutter/Dart
+# tooling state or native-platform build output -- .gitignore covers these
+# too, but Vercel's own upload step doesn't reliably honor it (confirmed:
+# a deploy attempt uploaded 1.5GB, matching build/app + .dart_tool, and
+# failed on Vercel's 100MB per-file limit), so this file makes the
+# exclusion explicit rather than inferred.
+build/
+.dart_tool/
+android/
+ios/
+web/
+test/
+integration_test/
+docs/
+.superpowers/
+node_modules/
+coverage/
+*.iml
