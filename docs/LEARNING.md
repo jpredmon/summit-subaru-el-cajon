@@ -1076,3 +1076,85 @@ Both of these were flagged by the required per-task review, verified against
   established elsewhere in this codebase) is what let every call site stay
   a one-line diff (`style: persistentLinkButtonStyle(context)`) instead of
   repeating a width check at each of the 9 sites.
+
+## 2026-07-12 — Task 40: VDP carousel swipe gesture + ghost chevrons
+
+- **A local `SizedBox` width constraint is not the same thing as a
+  simulated device viewport.** `photo_carousel_test.dart`'s original
+  `_wrap` helper wrapped `PhotoCarousel` in `SizedBox(width: 320, ...)` to
+  get "a realistic content width" — that constrains the widget's own
+  *layout box*, but `MediaQuery.sizeOf(context)` (what `windowSizeClassOf`
+  reads, the same convention `_FilterBar` already uses) reads the ambient
+  *screen* size, which stays the real test-binding default (800×600) no
+  matter how a descendant widget's own `SizedBox` is sized. The first
+  implementation pass silently rendered the *old* full-button-row UI in
+  every "compact-width" test — no crash, no error, just the wrong branch
+  — since 800px is `WindowSizeClass.medium`. Fixed by actually shrinking
+  `tester.view.physicalSize` (the pattern `srp_screen_test.dart`'s
+  `pumpAt` helpers already use for the exact same reason), not just the
+  local box. Lesson: any widget that reads `MediaQuery` directly needs its
+  tests to change the *view*, not just wrap it in a smaller box.
+- **`GestureDetector.onHorizontalDragEnd` only fires for
+  horizontally-dominant drags** — Flutter's gesture arena resolves a
+  `HorizontalDragGestureRecognizer` against a vertical ancestor
+  `Scrollable`'s own recognizer by comparing which axis the drag actually
+  moved along, not by z-order or widget nesting. This is what makes swipe
+  navigation "just work" without fighting the VDP page's own vertical
+  scroll, with no extra code needed — using the axis-specific callback
+  (instead of a generic pan/drag listener) is what buys that for free.
+- **`WidgetTester.fling(finder, offset, speed)` drives velocity directly,
+  not distance** — `speed` (px/s) is what a velocity-threshold check
+  (`details.primaryVelocity`) actually sees, while `offset`'s sign just
+  picks the direction. This made testing "below-threshold drags are
+  ignored" straightforward: a small `speed` value (100, versus the
+  feature's 300 threshold) reliably fails to trigger navigation
+  regardless of `offset` magnitude, without needing to fake a real
+  human's slower finger movement.
+- **A `Key` on a wrapper widget is not a `Key` on the widget a test
+  actually needs to interrogate.** First implementation pass put
+  `key: const Key('carousel-ghost-next')` on the outer `_GhostChevron`
+  (a private `StatelessWidget`) rather than the `IconButton` inside it —
+  `find.byKey(...)` located the wrapper fine, but
+  `tester.widget<IconButton>(...)` on that same finder threw (wrong
+  runtime type), and since `_GhostChevron` is private, no test outside
+  `photo_carousel.dart` could reference it directly either. Moving the
+  key onto the actual `IconButton` (renaming the wrapper's own key
+  parameter to `buttonKey` for clarity) fixed both problems at once.
+
+## 2026-07-12 — Task 38: `SliverMasonryGrid` crash fix (dropping `findChildIndexCallback`)
+
+- **`Widget.canUpdate` (type + `Key` equality) decides element reuse at a
+  given slot regardless of `findChildIndexCallback`.** Removing
+  `findChildIndexCallback` from the SRP grid's
+  `SliverChildBuilderDelegate` looked like it might reintroduce real
+  cross-vehicle state bleed (a `VehicleCard`'s focus-highlight state
+  leaking onto a *different* vehicle landing in the same grid slot after
+  a filter change) — but it doesn't, because each `VehicleCard` still
+  carries `key: ValueKey(vehicle.id)`. Flutter's reconciliation checks
+  `(runtimeType, key)` at every rebuilt slot independent of
+  `findChildIndexCallback`; a key mismatch there always tears down the
+  old `Element`/`State` and mounts fresh, never silently reuses it for a
+  different key. `findChildIndexCallback` only adds the ability to
+  *relocate* a matching-key `Element` to a new slot instead of discarding
+  it — losing that only means a vehicle can lose its own transient state
+  when its position shifts, not that a different vehicle's state can leak
+  onto it.
+- **Verified this distinction empirically, not just reasoned through it**
+  (per this project's own "verify before claiming" habit): re-ran the
+  existing Task 14c regression test (`srp_screen_test.dart`) after
+  removing the callback. Exactly one of its two assertions failed — "the
+  filtered-in vehicle keeps its *own* prior Element" — while "the
+  filtered-in vehicle never reuses a *different* vehicle's old Element"
+  kept passing unchanged. That's the concrete evidence the trade-off is
+  as narrow as reasoned, not a guess dressed up as a fact.
+- **A structural argument ("the dropdowns share the same delegate, so
+  they're likely vulnerable too") sat unconfirmed for a while** — three
+  separate synthetic `flutter_test` repro attempts during Task 38's
+  original investigation failed to reproduce the crash via dropdown
+  filtering. JP then hit it independently through completely ordinary use
+  (make=Dodge + minPrice=$10k) on both a real Android device and a mobile-
+  mode browser, which is what actually confirmed the dropdown path was
+  exploitable all along — the widget-test harness's inability to
+  reproduce something is evidence of a testing-environment gap (missing
+  real network image timing, real browser scroll/resize), not evidence
+  the bug doesn't exist.

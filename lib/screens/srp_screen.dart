@@ -136,24 +136,29 @@ class _SrpBodyState extends ConsumerState<_SrpBody> {
                       (context, index) {
                         final vehicle = paged.items[index];
                         return VehicleCard(
+                          // The key alone still stops a filter/page change
+                          // from ever carrying one vehicle's VehicleCard
+                          // State onto a *different* vehicle that lands in
+                          // the same grid slot -- canUpdate() mismatches on
+                          // key regardless of findChildIndexCallback, so a
+                          // key mismatch at a slot always tears down and
+                          // remounts fresh. What's lost by not supplying
+                          // findChildIndexCallback (Task 38, deliberate
+                          // trade-off) is only the milder nicety of a
+                          // vehicle *keeping* its own transient state when
+                          // its position shifts -- not cross-vehicle bleed.
+                          // findChildIndexCallback bought that nicety at
+                          // the cost of a real SliverMasonryGrid layout
+                          // crash under flutter_staggered_grid_view 0.7.0
+                          // (confirmed live, both via the browser and a
+                          // real Android device) when combined with
+                          // MasonryGridView's keyed-child-move handling.
                           key: ValueKey(vehicle.id),
                           vehicle: vehicle,
                           onTap: () => widget.onVehicleTap?.call(vehicle),
                         );
                       },
                       childCount: paged.items.length,
-                      // A `key:` on the built VehicleCard alone is not enough --
-                      // SliverChildBuilderDelegate.findIndexByKey returns null
-                      // and falls back to positional reconciliation unless
-                      // findChildIndexCallback is also supplied. Without this,
-                      // a filter/page change that drops a vehicle from view can
-                      // silently carry VehicleCard's focus-highlight State over
-                      // to a different vehicle now occupying the same grid slot.
-                      findChildIndexCallback: (key) {
-                        final id = (key as ValueKey<int>).value;
-                        final index = paged.items.indexWhere((v) => v.id == id);
-                        return index == -1 ? null : index;
-                      },
                     ),
                   ),
           ),

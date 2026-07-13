@@ -327,7 +327,14 @@ class Vehicle {
   Next disables at the last photo. Per-photo-index failure tracking (a
   failed photo shows the placeholder; navigating to a different index
   retries independently). Single placeholder (same one used on SRP cards)
-  when `photos` is empty.
+  when `photos` is empty. **Below the compact breakpoint (< 600px, Task
+  40, above-and-beyond polish):** the full Previous/Next `IconButton` row
+  is replaced by small semi-transparent "ghost" chevrons overlaid on the
+  photo's own edges (same tap targets/disabled-at-boundary/tooltip
+  semantics as the full row, just visually lighter) plus a horizontal
+  swipe gesture driving the identical index transitions — no
+  wraparound, same clamp semantics. The "X of Y" counter stays. At/above
+  600px: the full button row is unchanged, no swipe gesture.
 - Header: year/make/model/trim, price, mileage, stock number.
 - Spec table: engine, transmission, drivetrain, mpg city/hwy, exterior/
   interior color, certified status.
@@ -399,10 +406,17 @@ don't apply in Flutter and shouldn't be replicated:
   around the router's content); "Clear filters" control on empty filtered
   results — this is the only "Clear filters" control on the SRP (a
   filter-bar copy was tried and reverted after a real `SliverMasonryGrid`
-  layout crash on production data; suspected but not confirmed to be
-  caused by the grid's `findChildIndexCallback`-based key reuse — see
-  `docs/superpowers/plans/vincue-mobile-implementation.md` follow-up notes);
-  placeholder fallback for
+  layout crash on production data). Root cause confirmed (Task 38): the
+  SRP grid's `SliverChildBuilderDelegate` no longer sets
+  `findChildIndexCallback` — it triggered a real, confirmed-live (browser
+  + real Android device) `flutter_staggered_grid_view` 0.7.0 crash under
+  ordinary dropdown filtering too, not just Clear filters. Each
+  `VehicleCard` still carries `key: ValueKey(vehicle.id)`, which alone is
+  enough to guarantee a filter/page change never carries one vehicle's
+  card state onto a different vehicle in the same slot — the only thing
+  lost is a vehicle keeping its *own* state across a reposition, a minor
+  accepted trade-off (see `docs/superpowers/plans/
+  vincue-mobile-implementation.md` Task 38); placeholder fallback for
   broken/empty photo URLs via
   `Image.network`'s `errorBuilder`, tracked per-index in the carousel.
 - **Visual design:** carry over the palette intent (slate neutrals + amber

@@ -1639,7 +1639,7 @@ paging/URL-sync work, VDP reachable with all four states correct.
   git commit -m "feat: hide header logo below 600px, single reversible switch (Task 35)"
   ```
 
-- [ ] **38. Fix `SliverMasonryGrid` crash under keyed child reuse** — real
+- [x] **38. Fix `SliverMasonryGrid` crash under keyed child reuse** — real
   bug, JP reported (with console stack trace + screenshot) after using the
   filter-bar "Clear filters" button on the real production inventory (142
   vehicles): `RenderSliverMasonryGrid.performLayout` threw `Unexpected null
@@ -1680,6 +1680,23 @@ paging/URL-sync work, VDP reachable with all four states correct.
   structurally reachable through core, non-optional filtering — not just
   through the now-reverted filter-bar "Clear filters" button.
 
+  **Confirmed (2026-07-12, after the interim mitigation shipped):** JP
+  reproduced this independently through ordinary dropdown filtering, on
+  both mobile-mode desktop browser and a real Android device — make=Dodge
+  + minPrice=$10k (7 matching vehicles on desktop) rendered only 5 on
+  mobile, with the 2-per-row grid leaving an empty second slot and
+  dropping the last 2 vehicles entirely, alongside repeated `Null check
+  operator used on a null value` console errors — the exact same failure
+  class as the original Clear-filters report, this time via the
+  dropdowns the interim mitigation explicitly could not reach. This is
+  now a **confirmed real reproduction of the dropdown path**, not just
+  the structural argument above — closes the open question from the
+  three failed synthetic `flutter_test` repro attempts (real device/
+  browser conditions were indeed the missing ingredient). Makes the "Real
+  fix options" below no longer optional polish — this is a live,
+  reproducible correctness bug in core filtering, independent of Task
+  38's original Clear-filters trigger.
+
   **Interim mitigation (done, this session):** reverted the filter-bar's
   own "Clear filters" button (`e55bebe`, `7f87a99`, and the corresponding
   piece of `b6b454e`) back to how it was before — "Clear filters" is only
@@ -1688,20 +1705,134 @@ paging/URL-sync work, VDP reachable with all four states correct.
   matches the real report exactly, but does **not** close the dropdown
   path above. `docs/SPEC.md`'s Resilience UX bullet updated to match.
 
-  **Real fix options (not yet decided — discuss with JP before
-  starting):**
-  1. Drop `findChildIndexCallback` from the grid's delegate entirely.
-     Closes every path through this bug (dropdowns included). Trade-off:
-     reintroduces the focus-highlight state-bleed bug it was added to fix
-     (Task 14c).
-  2. Fork/patch `RenderSliverMasonryGrid` into this repo's own code,
-     adding the missing null guard for mid-list moved/new children
-     (mirroring the existing `firstChild` guard). Keeps both the masonry
-     layout and the focus-state fix. Takes on maintenance of forked
-     third-party rendering code.
-  3. Switch the SRP grid off `flutter_staggered_grid_view` entirely (e.g.
-     a hand-rolled masonry layout or a different package). Biggest
-     change, but sidesteps depending on an unmaintained package (0.7.0
-     published 2023, no newer version on pub.dev) for a load-bearing
-     piece of layout.
+  **Resolution (done, this session, JP's call): Option 1 — dropped
+  `findChildIndexCallback` from the grid's delegate entirely**
+  (`lib/screens/srp_screen.dart`). Closes the crash through every path
+  (dropdowns and both Clear-filters controls). `VehicleCard`'s
+  `key: ValueKey(vehicle.id)` is kept and, on its own, still fully
+  guarantees the important half of Task 14c's original guarantee: a
+  filter/page change can never carry one vehicle's card state onto a
+  *different* vehicle now in the same slot (`Widget.canUpdate` tears down
+  and remounts fresh on any key mismatch at a slot, with or without
+  `findChildIndexCallback`) — verified empirically, not just reasoned
+  about: removing the callback and re-running
+  `test/screens/srp_screen_test.dart` failed exactly one assertion (a
+  vehicle keeping its *own* prior state across a reposition) while the
+  cross-vehicle-bleed assertion in the same test kept passing unchanged.
+  That milder nicety is the only thing traded away. Test updated (not
+  deleted) to document this as the accepted Task 38 trade-off rather than
+  leave a red test in the suite. `docs/SPEC.md`'s Resilience UX bullet
+  updated to match. Full suite (288 tests) + `flutter analyze` clean.
+  **Live-verified fixed on real Android hardware** against the exact
+  reported repro (make=Dodge + minPrice=$10k).
+
+  Options considered and not taken: forking/patching
+  `RenderSliverMasonryGrid` (keeps the focus-state nicety, but takes on
+  maintaining forked third-party rendering code for a bug this simpler
+  fix already closes) and dropping `flutter_staggered_grid_view` entirely
+  (biggest change, same result this fix already achieves more cheaply).
+
+- [ ] **39. Add `integration_test` real-browser/device E2E coverage** — gap
+  identified while debugging Task 38: this project has 273 `flutter_test`
+  unit/widget tests plus a *manual* click-through step
+  (`flutter run -d web-server`, documented under "End-to-end verification"
+  above), but no automated test that drives a real browser or device.
+  Flutter's own `integration_test` package (first-party, no extra
+  dependency risk) does that — it runs the compiled app for real (real
+  `cached_network_image` network/decode timing, real browser layout and
+  scroll physics) instead of `flutter_test`'s simulated widget-tree
+  environment.
+
+  **Why this matters concretely:** Task 38's crash used production-scale
+  data (142 vehicles, a scrolled grid, real photos) that no existing
+  `flutter_test` fixture gets close to (largest is `List.generate(13,
+  ...)`, empty `photos` lists) — three targeted `flutter_test` repro
+  attempts during that debugging session could *not* reproduce the crash
+  for exactly that reason. `integration_test` is the tool that closes that
+  gap, though note it may not have caught Task 38 automatically either
+  unless the first test is deliberately scoped to replicate that shape
+  (see Step 1 below) — this task is about having the *capability*, not a
+  guarantee it retroactively covers every past bug.
+
+  **Scope for a first pass (not yet started):**
+  1. Add `integration_test` to `pubspec.yaml` `dev_dependencies` (`sdk:
+     flutter`) and create `integration_test/` per the standard Flutter
+     layout.
+  2. First test: load the SRP against a large (100+), heterogeneous
+     synthetic inventory (interleaved makes/bodies, non-empty `photos`
+     using real or realistic URLs so `cached_network_image`'s async
+     timing is actually exercised), scroll the grid, apply a filter,
+     then clear it — asserting no exception is thrown. This is the
+     closest automated equivalent of the real Task 38 report.
+  3. Decide how it runs: `flutter test integration_test` targets a real
+     device/browser (`-d web-server`/`-d chrome`/a connected device) —
+     confirm which is feasible given this project's dev-environment
+     constraints (no emulator, tight RAM/disk — see project memory) before
+     committing to a specific target in CI or local workflow docs.
+  4. Full per-task workflow applies (TDD, confidence score, dual review,
+     `docs/LEARNING.md` note on `integration_test` as a new concept) once
+     JP approves starting this task.
+
+- [ ] **40. VDP carousel swipe gesture, buttons hidden at compact width**
+  — Item 3 of 4 from the approved above-and-beyond polish plan
+  (`C:\Users\Student\.claude\plans\1-in-vdp-in-the-frolicking-volcano.md`),
+  next after Item 2 (Task 37, done) per that plan's own effort/risk
+  ranking. Not started: confirmed via grep, no `GestureDetector`/swipe
+  code exists in `lib/widgets/photo_carousel.dart` yet.
+
+  **Approach — swipe:** wrap the existing photo in a `GestureDetector`
+  with `onHorizontalDragEnd`; above a velocity/distance threshold, call
+  the *same* `setState(() => _index = nextPhotoIndex(...))` /
+  `prevPhotoIndex(...)` transitions the buttons already use
+  (`photo_carousel.dart:59,66`, `lib/models/carousel.dart`) — purely
+  additive, no new state logic. **Do not introduce `PageView`** — it
+  manages its own child lifecycle and would risk breaking the per-index
+  broken-photo retry isolation that depends on `VehiclePhoto` being keyed
+  `ValueKey(_index)` and swapped in place. No wraparound, matching
+  existing clamp semantics.
+
+  **Approach — compact-width affordance (resolved 2026-07-12, JP's
+  call):** at compact width, replace the current full `IconButton` Row
+  with small, semi-transparent "ghost" chevrons overlaid on the photo's
+  own left/right edges (not a separate button row below the photo) —
+  still tappable (same `prevPhotoIndex`/`nextPhotoIndex` handlers, same
+  disabled-at-boundary clamp), just visually lighter than today's full
+  `IconButton` row, so the photo reads as swipeable at a glance without
+  relying on the "X of Y" counter text alone. The counter text stays
+  as-is alongside the ghost chevrons. Above compact width: today's full
+  `IconButton` Row is unchanged (no touch gesture there, so no need for a
+  lighter affordance).
+
+  **Concrete risk — this is bigger than "just hide a Row":**
+  `test/widgets/photo_carousel_test.dart` currently wraps every test at a
+  **320px** width (already compact). Every existing test that taps/
+  asserts on the Previous/Next `IconButton`s (boundary-disabled, hidden
+  when only 1 photo, tap-to-advance, per-index retry-after-failure)
+  currently runs in what will become the ghost-chevron regime at that
+  width. These tests need to move to a non-compact width (medium or
+  expanded) to keep testing the full-`IconButton` behavior, and new
+  compact-width tests need to be added for: ghost chevrons present and
+  tappable (not full `IconButton`s), swipe-via-`tester.drag`/
+  `tester.fling` advancing `_index`, and the per-index failure-retry
+  guarantee re-verified under both swipe and ghost-chevron tap (not just
+  the old full-button tap).
+
+  **Cheap sample (before the full test rewrite):** build the swipe
+  gesture with a throwaway drag threshold first, run the app at a phone
+  width (`flutter run -d web-server`, per this project's no-emulator
+  constraint), tune the threshold by feel (diagonal swipes shouldn't
+  fight the VDP page's own vertical scroll), and look at the ghost-chevron
+  styling directly before committing to the full test rewrite above.
+
+  **Files:** `lib/widgets/photo_carousel.dart`,
+  `test/widgets/photo_carousel_test.dart` (significant rewrite of
+  width-assumptions, not just additions), `docs/SPEC.md` (VDP — scope,
+  Photo carousel bullet needs the swipe + compact-width affordance added
+  once implemented, per this project's spec-drift rule).
+
+  **Verification:** full test suite + `flutter analyze`; manual swipe
+  test on a real phone-width viewport (real resized browser window, not
+  just devtools per this plan's own past finding that the two can show
+  different visible content at the "same" width), confirming no fights
+  with page vertical scroll.
 

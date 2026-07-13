@@ -273,10 +273,14 @@ void main() {
   });
 
   testWidgets(
-    'a filter change that drops a vehicle from view does not carry its VehicleCard state over '
-    'to a different vehicle now occupying the same grid slot -- VehicleCard is Stateful '
-    '(focus-highlight state, Task 14c) and MasonryGridView.custom reconciles by list position '
-    'unless each item carries a stable identity key',
+    'a filter change that drops a vehicle from view never carries its VehicleCard state onto a '
+    'different vehicle now occupying the same grid slot, even without findChildIndexCallback '
+    '(Task 38: removed to fix a real SliverMasonryGrid crash on real-scale data; the ValueKey '
+    'alone -- kept -- is what still guarantees this, since canUpdate() tears down and remounts '
+    'fresh on any key mismatch at a slot regardless of findChildIndexCallback). Losing '
+    "findChildIndexCallback's own extra nicety -- a vehicle keeping its *own* prior state when "
+    'its position shifts, not cross-vehicle bleed -- is the accepted trade-off; see Task 38 in '
+    'docs/superpowers/plans/vincue-mobile-implementation.md.',
     (tester) async {
       final inventory = Inventory(
         vehicles: [
@@ -300,7 +304,6 @@ void main() {
 
       Finder cardFor(int id) => find.byWidgetPredicate((w) => w is VehicleCard && w.vehicle.id == id);
       final hondaElementBefore = tester.element(cardFor(1));
-      final toyotaElementBefore = tester.element(cardFor(2));
 
       await tester.tap(find.byKey(const Key('make-filter')));
       await tester.pumpAndSettle();
@@ -310,11 +313,6 @@ void main() {
       expect(find.byType(VehicleCard), findsOneWidget);
       final toyotaElementAfter = tester.element(find.byType(VehicleCard));
 
-      expect(
-        identical(toyotaElementAfter, toyotaElementBefore),
-        isTrue,
-        reason: "Toyota's own card should keep its identity/state across the filter change",
-      );
       expect(
         identical(toyotaElementAfter, hondaElementBefore),
         isFalse,
