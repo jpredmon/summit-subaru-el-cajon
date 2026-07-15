@@ -365,3 +365,81 @@ regression test.
 
 **New concept:** none new — `ButtonStyle`/`TextButton.styleFrom`, an
 existing Flutter mechanism this codebase hadn't used yet.
+
+### G6. VDP navigation doesn't sync the browser URL — found 2026-07-15, not yet fixed
+
+Found while debugging in VS Code (web-server debug mode): clicking a
+vehicle card correctly navigates to the VDP on screen, but the address
+bar stays frozen at `http://localhost:8765/` instead of showing the
+vehicle route. Confirmed via `systematic-debugging`, not guessed:
+
+- Filter/pagination changes on the SRP (`_SrpRoute`'s `context.go(...)`,
+  `lib/router/app_router.dart:111`) DO update the URL correctly.
+- VDP navigation (`context.push('/vehicle/${vehicle.id}')`,
+  `lib/router/app_router.dart:116`) does NOT update the visible URL —
+  but the browser's own Back button still works and returns to the
+  results list, meaning a real history entry IS created; only the
+  displayed address text fails to sync.
+- No console errors either way.
+- **Diagnostic test (temporary, already reverted):** swapping that one
+  line to `context.go('/vehicle/${vehicle.id}')` fixed the address bar
+  immediately, confirming the issue is specific to `push()` vs `go()` in
+  this `ShellRoute` setup, not a wider routing/config problem.
+
+**Why this matters beyond cosmetics:** since `push()` never actually
+reports the `/vehicle/:id` location, a page refresh or a bookmarked/
+copy-pasted VDP link currently drops back to the results list instead of
+restoring the vehicle — broken deep-linking, not just a display nit.
+
+**Lower-risk than it first looks:** the VDP's own in-app "back to
+results" button (`app_router.dart:41`, `onBackToResults: () =>
+context.go('/')`) already uses `go()`. Switching the entry point to
+`go()` too would just make both navigation paths consistent — right now
+they're mismatched (`push` in, `go` out).
+
+**One real tradeoff to weigh before picking this up:** `push()`
+currently keeps the SRP page's widget alive underneath the VDP in the
+Navigator stack, which preserves SRP scroll position when using the
+hardware/browser Back button specifically. Switching to `go()` disposes
+and rebuilds SRP on the way back — filters/pagination still restore fine
+(already round-trip through URL query params via `_SrpRoute`), but
+scroll position doesn't (and never did via the in-app back button
+either, since that already uses `go()`).
+
+**Separate, related open question surfaced during the same
+investigation — not yet decided:** this app has never called
+`usePathUrlStrategy()` (`flutter_web_plugins`), so URLs are hash-based
+(`/#/vehicle/123`) rather than clean paths (`/vehicle/123`). SPEC.md
+doesn't specify either way. Two options if picked up:
+1. **Leave hash-based** — zero extra work, no server config needed.
+2. **Switch to path-based** — one line in `main.dart`
+   (`usePathUrlStrategy()`), but requires the web server to route all
+   paths back to `index.html` (a rewrite rule) or deep links 404 on
+   refresh — the current Vercel deploy has no such rewrite configured
+   yet, so this would need a `vercel.json` addition too.
+
+**Test first (if picked up):** widget/route test asserting the reported
+location (`state.uri`/`GoRouterState`) reflects `/vehicle/:id` after
+navigating in, not just that the VDP widget renders.
+
+**New concept:** none new — `go_router`'s `push()` vs `go()` semantics,
+already used elsewhere in this file.
+
+### G7. Always-visible "Clear filters" button in the filter bar — safe to re-add now
+
+Previously attempted (2026-07-12, same day as Tasks 33-35) and reverted
+in Task 38 (`0dfabcf`) after it triggered a real `SliverMasonryGrid`
+crash. **Root cause of that crash was fixed in Task 38 itself**
+(`7f7aa74`, dropping `findChildIndexCallback` from the masonry grid
+config) — the crash was in `flutter_staggered_grid_view`'s handling of
+keyed child reuse, not anything specific to the Clear-filters button; it
+later reproduced identically through plain make/price dropdown filtering
+too, confirming it wasn't button-specific.
+
+Since the actual crash mechanism is gone, re-adding an always-visible
+Clear-filters button (shown whenever any of `make`/`body`/`minPrice`/
+`maxPrice` is non-null, not just when results are empty) should be safe
+now. The original implementation (`e55bebe`) is still in git history as
+a reference for placement/wrapping if picked up — it already handled the
+compact-width `Apply filters`/`Clear filters` overflow via `Wrap` and the
+ambiguous-finder test fix for the dual-button case.
