@@ -501,13 +501,13 @@ don't apply in Flutter and shouldn't be replicated:
   reload client is served inside the page itself, independent of any
   debug-protocol attach.
 - **CORS applies the same regardless of launch method:** a manually-opened
-  Chrome tab is exactly as subject to CORS enforcement as an automated one,
-  so this dev workflow still goes through the Vercel proxy (`/api/inventory`)
-  rather than calling VINCUE directly — same reasoning as the web app, see
-  "API access strategy" above.
-- **Native Android build** calls VINCUE directly (no proxy — CORS is
-  browser-only enforcement). Selected via the single build-time base-URL
-  switch described above, not a second code path.
+  Chrome tab is exactly as subject to CORS enforcement as an automated one;
+  historically, this dev workflow went through the Vercel proxy (`/api/inventory`)
+  rather than calling VINCUE directly, but the app now loads from a bundled
+  snapshot.
+- **Native Android build** — historically called VINCUE directly (no proxy —
+  CORS is browser-only enforcement); the app now loads from a bundled
+  snapshot regardless of build target.
 - **Android toolchain status:** cmdline-tools, platform-tools, and a single
   build-tools version are installed and all licenses accepted (see
   `dev-environment-notes.md`). An Android `platforms;android-XX` package is
