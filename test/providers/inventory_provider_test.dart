@@ -5,28 +5,28 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:vincue_mobile/models/dealer_name.dart';
 import 'package:vincue_mobile/providers/inventory_provider.dart';
-import 'package:vincue_mobile/services/inventory_api_client.dart';
 import 'package:vincue_mobile/services/inventory_response_parser.dart';
+import 'package:vincue_mobile/services/static_inventory_data_source.dart';
 
 import '../support/raw_vehicle_factory.dart';
 
-class _MockClient extends Mock implements InventoryApiClient {}
+class _MockDataSource extends Mock implements StaticInventoryDataSource {}
 
 void main() {
-  late _MockClient client;
+  late _MockDataSource dataSource;
 
-  setUp(() => client = _MockClient());
+  setUp(() => dataSource = _MockDataSource());
 
   ProviderContainer container() {
     final c = ProviderContainer(
-      overrides: [inventoryApiClientProvider.overrideWithValue(client)],
+      overrides: [staticInventoryDataSourceProvider.overrideWithValue(dataSource)],
     );
     addTearDown(c.dispose);
     return c;
   }
 
   test('fetches once per session even when read multiple times', () async {
-    when(() => client.fetchInventory()).thenAnswer(
+    when(() => dataSource.loadInventory()).thenAnswer(
       (_) async => RawInventory(records: [rawVehicle()], dealerName: 'Dealer'),
     );
 
@@ -35,11 +35,11 @@ void main() {
     await c.read(inventoryProvider.future);
     c.read(inventoryProvider);
 
-    verify(() => client.fetchInventory()).called(1);
+    verify(() => dataSource.loadInventory()).called(1);
   });
 
   test('exposes transformed vehicles and the dealer name', () async {
-    when(() => client.fetchInventory()).thenAnswer(
+    when(() => dataSource.loadInventory()).thenAnswer(
       (_) async => RawInventory(
         records: [rawVehicle(sellingPrice: '0.00'), rawVehicle(sellingPrice: '25000.00')],
         dealerName: 'Summit Subaru El Cajon',
@@ -53,12 +53,11 @@ void main() {
     expect(inventory.dealerName, 'Summit Subaru El Cajon');
   });
 
-  test('propagates a client error through the provider', () async {
-    when(() => client.fetchInventory())
+  test('propagates a data source error through the provider', () async {
+    when(() => dataSource.loadInventory())
         .thenAnswer((_) => Future.error(const InventoryApiException('boom')));
 
     final c = container();
-    // Keep the provider alive and drain the async work before asserting.
     c.listen(inventoryProvider, (_, _) {}, onError: (_, _) {});
     await pumpEventQueue();
 
@@ -70,17 +69,14 @@ void main() {
   group('dealerNameProvider', () {
     test('returns the fallback while inventory is still loading', () {
       final pending = Completer<RawInventory>();
-      when(() => client.fetchInventory()).thenAnswer((_) => pending.future);
+      when(() => dataSource.loadInventory()).thenAnswer((_) => pending.future);
 
       expect(container().read(dealerNameProvider), kFallbackDealerName);
     });
 
     test('returns the loaded dealer name once available', () async {
-      when(() => client.fetchInventory()).thenAnswer(
-        (_) async => RawInventory(
-          records: [rawVehicle()],
-          dealerName: 'Summit Subaru El Cajon',
-        ),
+      when(() => dataSource.loadInventory()).thenAnswer(
+        (_) async => RawInventory(records: [rawVehicle()], dealerName: 'Summit Subaru El Cajon'),
       );
 
       final c = container();

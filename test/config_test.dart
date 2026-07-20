@@ -1,68 +1,7 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/misc.dart' show ProviderException;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vincue_mobile/config.dart';
-import 'package:vincue_mobile/models/inventory.dart';
-import 'package:vincue_mobile/providers/inventory_provider.dart';
 
 void main() {
-  test(
-    'inventoryApiClientProvider.overrideWith(buildInventoryApiClient) is lazy -- constructing '
-    'the ProviderContainer with an unconfigured build does not throw; only reading the '
-    'provider does. This is the property that lets an unconfigured/misconfigured build fail '
-    'gracefully (caught by inventoryProvider\'s FutureProvider) instead of crashing at app '
-    'bootstrap, before ProviderScope/runApp even exist.',
-    () {
-      late ProviderContainer container;
-      expect(
-        () => container = ProviderContainer(
-          overrides: [
-            inventoryApiClientProvider.overrideWith(
-              (ref) => buildInventoryApiClient(isWeb: true, apiBaseUrl: '', apiKey: ''),
-            ),
-          ],
-        ),
-        returnsNormally,
-      );
-      addTearDown(container.dispose);
-
-      // Riverpod wraps a Provider's creation-time throw in its own
-      // ProviderException when read via container.read -- the original
-      // UnimplementedError is its .exception field, not the thrown type
-      // itself. This wrapping doesn't affect the real app: it's still a
-      // regular exception, so inventoryProvider's FutureProvider body still
-      // catches it and surfaces an AsyncError the same as any other
-      // inventory-fetch failure.
-      expect(
-        () => container.read(inventoryApiClientProvider),
-        throwsA(
-          isA<ProviderException>().having((e) => e.exception, 'exception', isA<UnimplementedError>()),
-        ),
-      );
-    },
-  );
-
-  test(
-    'an unconfigured inventoryApiClientProvider surfaces as a graceful AsyncError through '
-    'inventoryProvider -- the same FutureProvider real screens read -- rather than an '
-    'uncaught exception, proving the laziness above actually degrades gracefully end-to-end',
-    () {
-      final container = ProviderContainer(
-        overrides: [
-          inventoryApiClientProvider.overrideWith(
-            (ref) => buildInventoryApiClient(isWeb: true, apiBaseUrl: '', apiKey: ''),
-          ),
-        ],
-      );
-      addTearDown(container.dispose);
-
-      // The throw is synchronous (no await needed to build the client), so
-      // inventoryProvider's FutureProvider body throws synchronously too --
-      // Riverpod represents that as AsyncError immediately, no async gap.
-      expect(container.read(inventoryProvider), isA<AsyncError<Inventory>>());
-    },
-  );
-
   group('buildInventoryApiClient', () {
     test(
       'throws UnimplementedError when API_BASE_URL is not supplied (unconfigured build) -- '

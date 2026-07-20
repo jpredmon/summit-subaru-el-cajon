@@ -3,25 +3,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/dealer_name.dart';
 import '../models/filter_vehicles.dart';
 import '../models/inventory.dart';
-import '../services/inventory_api_client.dart';
 import '../services/inventory_repository.dart';
+import '../services/static_inventory_data_source.dart';
 
-/// Supplies the configured API client. Has no usable default — the base URL
-/// and key are build-time inputs — so it must be overridden at the app root
-/// (build config, Task 15) and in tests.
-final inventoryApiClientProvider = Provider<InventoryApiClient>((ref) {
-  throw UnimplementedError(
-    'inventoryApiClientProvider must be overridden at the app root (Task 15).',
-  );
+/// The bundled-asset inventory data source. Unlike the historical
+/// `inventoryApiClientProvider` it replaces, this has a real default and
+/// needs no app-root override — there's no build-time configuration left
+/// (see docs/superpowers/specs/2026-07-20-static-inventory-snapshot-design.md).
+final staticInventoryDataSourceProvider = Provider<StaticInventoryDataSource>((ref) {
+  return StaticInventoryDataSource();
 });
 
 final inventoryRepositoryProvider = Provider<InventoryRepository>((ref) {
-  return InventoryRepository(ref.watch(inventoryApiClientProvider));
+  return InventoryRepository(ref.watch(staticInventoryDataSourceProvider));
 });
 
 /// The single source of inventory for the session. A [FutureProvider] computes
 /// its body once and caches the result, so SRP and VDP share one fetch — never
-/// two — keeping well inside the 5000/hr rate limit regardless of navigation.
+/// two.
 final inventoryProvider = FutureProvider<Inventory>((ref) {
   return ref.watch(inventoryRepositoryProvider).getInventory();
 });
