@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:vincue_mobile/services/inventory_api_client.dart';
+import 'package:vincue_mobile/services/inventory_response_parser.dart';
 import 'package:vincue_mobile/services/inventory_repository.dart';
 
 import '../support/raw_vehicle_factory.dart';
