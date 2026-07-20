@@ -39,15 +39,18 @@ ApiBuildConfig resolveApiBuildConfig({
 }
 
 /// Builds the real `InventoryApiClient` from raw `--dart-define` values, or
-/// throws if the build is unconfigured -- called from inside
-/// `inventoryApiClientProvider`'s override (`Provider.overrideWith`, not
-/// `overrideWithValue`) so this only ever runs the first time something
-/// actually reads the provider, not eagerly during `main()` before
-/// `runApp()`. That laziness matters: a throw here is then caught by
-/// `inventoryProvider`'s `FutureProvider` body (which awaits
-/// `getInventory()`, itself calling this client) the same way any other
-/// inventory-fetch failure is, surfacing as a graceful in-app error state
-/// instead of an uncaught exception crashing the app before any UI renders.
+/// throws if the build is unconfigured. Historical (see
+/// docs/superpowers/specs/2026-07-20-static-inventory-snapshot-design.md):
+/// this was called from inside the app root's `inventoryApiClientProvider`
+/// override (`Provider.overrideWith`, not `overrideWithValue`) so it only
+/// ever ran the first time something actually read the provider, not
+/// eagerly during `main()` before `runApp()`. That laziness mattered: a
+/// throw here was then caught by `inventoryProvider`'s `FutureProvider`
+/// body (which awaits `getInventory()`, itself calling this client) the
+/// same way any other inventory-fetch failure was, surfacing as a graceful
+/// in-app error state instead of an uncaught exception crashing the app
+/// before any UI rendered. No longer wired to any provider -- the app now
+/// always loads the bundled static snapshot instead.
 ///
 /// An empty/whitespace-only [apiBaseUrl] means the build is unconfigured
 /// (no `API_BASE_URL` define supplied -- e.g. the web proxy isn't deployed
@@ -64,8 +67,8 @@ InventoryApiClient buildInventoryApiClient({
 }) {
   if (apiBaseUrl.trim().isEmpty) {
     throw UnimplementedError(
-      'inventoryApiClientProvider must be configured via '
-      '--dart-define=API_BASE_URL=... (and --dart-define=VINCUE_API_KEY=... on native).',
+      'buildInventoryApiClient requires --dart-define=API_BASE_URL=... '
+      '(and --dart-define=VINCUE_API_KEY=... on native).',
     );
   }
 
