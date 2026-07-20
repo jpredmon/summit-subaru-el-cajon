@@ -31,7 +31,7 @@ Open `http://localhost:8765` manually (see [Dev environment](#dev-environment--b
 flutter run -d <device-id>
 ```
 
-**The proxy** (`api/`) is no longer called by the app at runtime, but its code and tests remain in the repo as documented history — see below.
+**The proxy** (`api/`) is no longer called by the app at runtime and, as of 2026-07-20, is no longer deployed either (excluded via `.vercelignore`) — the live site is static-hosting only now. Its code and tests remain in the repo as documented history — see below.
 
 ## Architecture: the CORS bug (historical) and this app's two build targets
 
