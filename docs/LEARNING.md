@@ -1408,3 +1408,25 @@ throughout.
   covers things someone thought to write down. A periodic "what haven't
   we checked" pass, not just "what have we deferred," might have caught
   it sooner.
+
+## 2026-07-20 — Task 2: Static inventory snapshot + bundled data assets
+
+- **Bundled data assets (not just images) are declared in `pubspec.yaml`'s
+  `flutter: assets:` list, same as images.** `assets/data/inventory.json`
+  is registered alongside `assets/images/...` and accessed at runtime via
+  `rootBundle.loadString('assets/data/inventory.json')` — no special
+  "data" handling, the `AssetBundle` and `rootBundle` getter treat all
+  assets uniformly. Flutter packages the declared files into the app bundle
+  at build time; `loadString` retrieves them synchronously-ish (actually
+  async, but backed by the app's own binary, not a network call) at runtime.
+- **Tests inject a mock `AssetBundle` to avoid real file system I/O**, via
+  mocktail's `Mock` with `when(() => bundle.loadString(any())).thenAnswer(...)`.
+  For integration tests exercising the *real* bundled asset,
+  `TestWidgetsFlutterBinding.ensureInitialized()` is required before any
+  `rootBundle` call — it wires the real asset system up in the test harness.
+- **`rootBundle` is a getter, not a compile-time constant**, so it cannot
+  appear in a `const` constructor's initializer list. The pattern here
+  (`constructor({AssetBundle? bundle}) : _bundle = bundle ?? rootBundle`)
+  matches `InventoryApiClient`'s own non-const design for the same reason
+  (`httpClient ?? http.Client()`). Both are runtime defaults, not constant
+  values.
