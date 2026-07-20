@@ -1,20 +1,20 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:vincue_mobile/services/inventory_api_client.dart';
-import 'package:vincue_mobile/services/inventory_response_parser.dart';
 import 'package:vincue_mobile/services/inventory_repository.dart';
+import 'package:vincue_mobile/services/inventory_response_parser.dart';
+import 'package:vincue_mobile/services/static_inventory_data_source.dart';
 
 import '../support/raw_vehicle_factory.dart';
 
-class _MockClient extends Mock implements InventoryApiClient {}
+class _MockDataSource extends Mock implements StaticInventoryDataSource {}
 
 void main() {
-  late _MockClient client;
+  late _MockDataSource dataSource;
 
-  setUp(() => client = _MockClient());
+  setUp(() => dataSource = _MockDataSource());
 
   test('maps raw records through the transform and passes dealerName', () async {
-    when(() => client.fetchInventory()).thenAnswer(
+    when(() => dataSource.loadInventory()).thenAnswer(
       (_) async => RawInventory(
         records: [
           rawVehicle(sellingPrice: '0.00'), // -> price null via transform
@@ -24,7 +24,7 @@ void main() {
       ),
     );
 
-    final inventory = await InventoryRepository(client).getInventory();
+    final inventory = await InventoryRepository(dataSource).getInventory();
 
     expect(inventory.vehicles, hasLength(2));
     expect(inventory.vehicles.first.price, isNull);
@@ -32,12 +32,11 @@ void main() {
     expect(inventory.dealerName, 'Summit Subaru El Cajon');
   });
 
-  test('propagates client errors', () {
-    when(() => client.fetchInventory())
-        .thenThrow(const InventoryApiException('boom'));
+  test('propagates data source errors', () {
+    when(() => dataSource.loadInventory()).thenThrow(const InventoryApiException('boom'));
 
     expect(
-      InventoryRepository(client).getInventory(),
+      InventoryRepository(dataSource).getInventory(),
       throwsA(isA<InventoryApiException>()),
     );
   });
