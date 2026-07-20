@@ -4,6 +4,8 @@
 
 A Flutter/Dart port of [VincueInventoryChallenge](../VincueInventoryChallenge) — a VINCUE dealer inventory browser (search results grid + vehicle details page) targeting Flutter Web and Android, built for full feature parity with the finished web app: caching, paging, filtering, dark mode, accessibility, and resilience UX.
 
+![SRP screenshot](assets/images/srp-screenshot.png)
+
 ## Status
 
 Full core scope (SRP + VDP parity, caching, paging, filtering, dark mode built but disabled, accessibility, resilience UX) plus a long list of extra polish is complete — 42 numbered tasks in `docs/superpowers/plans/vincue-mobile-implementation.md`, including a real-device (Pixel 2) verification pass, a disk-level photo cache, VDP carousel swipe gestures, and a real production bug (a `flutter_staggered_grid_view` layout crash under filtering) found and fixed. Built task-by-task under a strict TDD + confidence-scoring + dual-review loop (see this project's `CLAUDE.md`). Real-device/browser `integration_test` E2E coverage was added for two flows (large-inventory scroll/filter and fetch-failure/retry) once the widget-test suite alone was shown not to catch everything.
