@@ -110,6 +110,26 @@ architecture either way and isn't really optional to cut.
     native. This keeps the client a thin fetch/parse layer and keeps the
     `dealerID` in config rather than hardcoded in the client.
 
+### Data source (deviation, 2026-07-20)
+
+VINCUE revoked live API access for this project. With permission from the
+hiring contact's director to continue using this build as a practice/
+portfolio project, the live fetch described above was replaced by a
+one-time captured snapshot: `assets/data/inventory.json` (143 records,
+captured 2026-07-20), loaded via a bundled-asset data source
+(`StaticInventoryDataSource`) instead of `InventoryApiClient`'s HTTP GET.
+This is the *only* runtime data source on both build targets now.
+
+The live-fetch architecture described above — the Vercel proxy, the
+CORS-broken-on-VINCUE's-side story, the native direct-call/API-key path,
+the single build-time base-URL/key switch — is preserved unchanged in
+`InventoryApiClient` and `config.dart`, fully tested, but no longer wired
+into the running app (nothing in `main.dart` or the provider graph imports
+either file anymore). It remains as documented history of the original
+design, not a currently-exercised code path. See
+`docs/superpowers/specs/2026-07-20-static-inventory-snapshot-design.md`
+for the full design rationale.
+
 ## Data model
 
 Same transformed/narrowed shape as the web app — consume `Vehicle`, not the

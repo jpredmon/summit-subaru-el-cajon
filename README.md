@@ -12,33 +12,30 @@ See the plan file for the full task-by-task history. Small deferred items and op
 
 ## Setup
 
-**Web** (the primary dev loop on this machine — see [Dev environment](#dev-environment--build-architecture) for why):
+Both build targets now read from a bundled inventory snapshot
+(`assets/data/inventory.json`) rather than a live API call — no
+`--dart-define` configuration needed for either one. See
+[Architecture: the CORS bug](#architecture-the-cors-bug-historical-and-this-apps-two-build-targets)
+below for why that architecture existed and why it's now historical.
 
 ```bash
 flutter pub get
-flutter run -d web-server --web-port=8765 --dart-define=API_BASE_URL=<proxy-or-direct-url>
+flutter run -d web-server --web-port=8765
 ```
 
-Open `http://localhost:8765` manually (see below for why `-d web-server` instead of `-d chrome`). `API_BASE_URL` needs a running proxy behind it for the web build — either `https://flutterinventory.vercel.app/api/inventory` (the deployed one) or a local `vercel dev` instance (see the proxy's own setup below).
+Open `http://localhost:8765` manually (see [Dev environment](#dev-environment--build-architecture) for why `-d web-server` instead of `-d chrome`).
 
-**Native Android** — no proxy needed; the native build calls VINCUE directly:
+**Native Android:**
 
 ```bash
-flutter run -d <device-id> --dart-define=API_BASE_URL=https://pro.vincue.com/api/Inventory/ActiveInventory?dealerID=54222 --dart-define=VINCUE_API_KEY=<real-key>
+flutter run -d <device-id>
 ```
 
-**The proxy itself** (`api/`, only needed if redeploying it or running it locally):
+**The proxy** (`api/`) is no longer called by the app at runtime, but its code and tests remain in the repo as documented history — see below.
 
-```bash
-npm install
-cp .env.example .env
-# edit .env and set VINCUE_API_KEY to a real key
-npm test          # vitest, the proxy's own tests
-vercel dev        # serve it locally
-npm run deploy    # build the Flutter app + deploy both together to Vercel
-```
+## Architecture: the CORS bug (historical) and this app's two build targets
 
-## Architecture: the CORS bug (and this app's two build targets)
+**Historical:** VINCUE revoked live API access for this project; the app now runs entirely off a bundled JSON snapshot (see [Setup](#setup) and `docs/SPEC.md`'s "Data source (deviation)" note). The architecture below is preserved in the code (`InventoryApiClient`, `config.dart`, `api/`) and here in the README as a description of how the app worked while the API was live — none of it is on the runtime path anymore.
 
 Same root cause as the reference React app: VINCUE's API sends `Access-Control-Allow-Origin: *, *` — the header twice — on both the preflight and the actual `GET`, which browsers reject outright on any cross-origin call, confirmed with `curl` and independent of how the API key is handled. No browser build can call VINCUE directly, full stop.
 
