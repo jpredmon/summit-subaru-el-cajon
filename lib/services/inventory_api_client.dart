@@ -1,35 +1,14 @@
-import 'dart:convert';
-
 import 'package:http/http.dart' as http;
 
-import '../models/dealer_name.dart';
-import '../models/raw_vehicle.dart';
+import 'inventory_response_parser.dart';
 
-/// Raised for any failure fetching or parsing the inventory response —
-/// network error, non-200 status, or a malformed body. Callers (the Riverpod
-/// provider) surface a single error state regardless of cause.
-class InventoryApiException implements Exception {
-  const InventoryApiException(this.message);
-
-  final String message;
-
-  @override
-  String toString() => 'InventoryApiException: $message';
-}
-
-/// The raw fetch result: untransformed records plus the derived dealer name.
-/// The repository (Task 5) maps [records] through `transformVehicle`.
-class RawInventory {
-  const RawInventory({required this.records, required this.dealerName});
-
-  final List<RawVehicle> records;
-  final String dealerName;
-}
-
-/// Fetches and parses the VINCUE inventory response. One client serves both
-/// build targets via a fully-resolved [baseUrl] and an [attachApiKeyHeader]
-/// flag — no `--dart-define` reads or path/dealerID construction happen here
-/// (that lives in build config, Task 15).
+/// Fetches and parses the VINCUE inventory response. Historical as of the
+/// static-inventory-snapshot switch (see
+/// docs/superpowers/specs/2026-07-20-static-inventory-snapshot-design.md):
+/// no longer imported by anything the running app uses, but preserved and
+/// tested unchanged as documented history of the original live-fetch/
+/// proxy/CORS-workaround architecture. One client served both build
+/// targets via a fully-resolved [baseUrl] and an [attachApiKeyHeader] flag.
 class InventoryApiClient {
   InventoryApiClient({
     required this.baseUrl,
@@ -39,19 +18,19 @@ class InventoryApiClient {
   }) : _http = httpClient ?? http.Client() {
     // A real runtime check, not `assert` -- asserts are stripped in
     // release/profile builds, which would let a misconfigured native build
-    // (Task 15) silently send unauthenticated requests instead of failing
-    // loudly at construction.
+    // silently send unauthenticated requests instead of failing loudly at
+    // construction.
     if (attachApiKeyHeader && apiKey == null) {
       throw ArgumentError.value(apiKey, 'apiKey', 'is required when attachApiKeyHeader is true');
     }
   }
 
-  /// Fully-resolved inventory endpoint URL, GET verbatim. Differs per build
-  /// (Vercel proxy on web, direct VINCUE URL on native).
+  /// Fully-resolved inventory endpoint URL, GET verbatim. Differed per
+  /// build (Vercel proxy on web, direct VINCUE URL on native).
   final String baseUrl;
 
-  /// Whether to send the `x-api-key` header client-side (native build only;
-  /// the proxy build attaches no key).
+  /// Whether to send the `x-api-key` header client-side (native build
+  /// only; the proxy build attached no key).
   final bool attachApiKeyHeader;
 
   final String? apiKey;
@@ -66,32 +45,10 @@ class InventoryApiClient {
     }
 
     if (response.statusCode != 200) {
-      throw InventoryApiException(
-        'Inventory request failed: ${response.statusCode}',
-      );
+      throw InventoryApiException('Inventory request failed: ${response.statusCode}');
     }
 
-    final Object? decoded;
-    try {
-      decoded = jsonDecode(response.body);
-    } on FormatException catch (error) {
-      throw InventoryApiException('Malformed inventory response: ${error.message}');
-    }
-
-    if (decoded is! Map<String, dynamic> || decoded['result'] is! List) {
-      throw const InventoryApiException(
-        'Inventory response missing "result" array',
-      );
-    }
-
-    try {
-      final records = (decoded['result'] as List<dynamic>)
-          .map((e) => RawVehicle.fromJson(e as Map<String, dynamic>))
-          .toList();
-      return RawInventory(records: records, dealerName: getDealerName(records));
-    } catch (error) {
-      throw InventoryApiException('Malformed inventory record: $error');
-    }
+    return parseInventoryResponse(response.body);
   }
 
   Map<String, String> _headers() {
